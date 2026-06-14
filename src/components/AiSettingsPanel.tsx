@@ -11,6 +11,7 @@ import {
 
 const styleOptions: AiStyle[] = ['practical', 'funny', 'professional', 'raw', 'motivational'];
 const depthOptions: AiSettings['launchPlanDepth'][] = ['lean', 'standard', 'deep'];
+const suggestedModels = ['gpt-5.4-mini', 'gpt-5.4', 'gpt-5.5'];
 
 interface AiSettingsPanelProps {
   compact?: boolean;
@@ -73,11 +74,17 @@ export function AiSettingsPanel({ compact = false, onStatusChange }: AiSettingsP
         <label>
           Preferred model
           <input
+            list="kodiak-ai-models"
             onChange={(event) => updateSettings('model', event.target.value)}
-            placeholder="gpt-5.1-mini"
+            placeholder="gpt-5.4-mini"
             value={settings.model}
           />
-          <small className="field-note">Server-side only. The OpenAI key stays in .env and never goes to the browser.</small>
+          <datalist id="kodiak-ai-models">
+            {suggestedModels.map((model) => (
+              <option key={model} value={model} />
+            ))}
+          </datalist>
+          <small className="field-note">Default: gpt-5.4-mini. The OpenAI key stays in .env and never goes to the browser.</small>
         </label>
 
         <label>
