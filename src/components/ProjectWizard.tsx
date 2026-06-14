@@ -209,7 +209,7 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
             </div>
           </div>
         ) : (
-          <div className="wizard-body">
+          <div className="wizard-body show-type-step">
             <div className="wizard-copy-card">
               <p className="eyebrow">Step 2</p>
               <h3>Pick the closest show type.</h3>
@@ -218,38 +218,40 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
               </p>
             </div>
 
-            <div className="show-type-grid">
-              {showTypeOptions.map((option) => (
-                <button
-                  className={option.id === selectedShowType ? 'show-type-card selected' : 'show-type-card'}
-                  key={option.id}
-                  onClick={() => selectShowType(option)}
-                  type="button"
-                >
-                  <strong>{option.title}</strong>
-                  <span>{option.description}</span>
-                </button>
-              ))}
-            </div>
+            <div className="wizard-main-column">
+              <div className="show-type-grid">
+                {showTypeOptions.map((option) => (
+                  <button
+                    className={option.id === selectedShowType ? 'show-type-card selected' : 'show-type-card'}
+                    key={option.id}
+                    onClick={() => selectShowType(option)}
+                    type="button"
+                  >
+                    <strong>{option.title}</strong>
+                    <span>{option.description}</span>
+                  </button>
+                ))}
+              </div>
 
-            <div className="wizard-form-grid compact-wizard-form">
-              <label className="wizard-wide-label">
-                Tone
-                <input
-                  onChange={(event) => updateDraft('tone', event.target.value)}
-                  placeholder={selectedOption.tone}
-                  value={draft.tone}
-                />
-              </label>
+              <div className="wizard-form-grid compact-wizard-form">
+                <label className="wizard-wide-label">
+                  Tone
+                  <input
+                    onChange={(event) => updateDraft('tone', event.target.value)}
+                    placeholder={selectedOption.tone}
+                    value={draft.tone}
+                  />
+                </label>
 
-              <label className="wizard-wide-label">
-                Format
-                <textarea
-                  onChange={(event) => updateDraft('format', event.target.value)}
-                  placeholder={selectedOption.format}
-                  value={draft.format}
-                />
-              </label>
+                <label className="wizard-wide-label">
+                  Format
+                  <textarea
+                    onChange={(event) => updateDraft('format', event.target.value)}
+                    placeholder={selectedOption.format}
+                    value={draft.format}
+                  />
+                </label>
+              </div>
             </div>
           </div>
         )}
