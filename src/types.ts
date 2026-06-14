@@ -1,11 +1,13 @@
 export type EpisodeStatus =
   | 'idea'
   | 'outline'
+  | 'outlined'
   | 'scheduled'
+  | 'ready'
   | 'recorded'
   | 'published';
 
-export type GuestStatus = 'wishlist' | 'contacted' | 'scheduled' | 'recorded';
+export type GuestStatus = 'wishlist' | 'contacted' | 'scheduled' | 'recorded' | 'passed';
 
 export interface PodcastInputs {
   showName: string;
@@ -35,6 +37,10 @@ export interface EpisodeIdea {
   status: EpisodeStatus;
   segments: string[];
   clipIdeas: string[];
+  mainIdea?: string;
+  listenerTakeaway?: string;
+  notes?: string;
+  publishDate?: string;
 }
 
 export interface GuestLead {
@@ -43,6 +49,7 @@ export interface GuestLead {
   fit: string;
   episodeAngle: string;
   status: GuestStatus;
+  notes?: string;
 }
 
 export interface ChecklistItem {
