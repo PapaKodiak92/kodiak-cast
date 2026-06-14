@@ -8,6 +8,8 @@ export type EpisodeStatus =
   | 'published';
 
 export type GuestStatus = 'wishlist' | 'contacted' | 'scheduled' | 'recorded' | 'passed';
+export type LaunchStatus = 'todo' | 'doing' | 'done';
+export type LaunchPriority = 'low' | 'medium' | 'high';
 
 export interface PodcastInputs {
   showName: string;
@@ -56,6 +58,10 @@ export interface ChecklistItem {
   id: string;
   label: string;
   done: boolean;
+  status?: LaunchStatus;
+  priority?: LaunchPriority;
+  dueDate?: string;
+  notes?: string;
 }
 
 export interface PodcastStarterKit {
