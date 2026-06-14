@@ -28,16 +28,16 @@ export function AiSettingsPanel({ compact = false, onStatusChange }: AiSettingsP
   const handleSave = () => {
     const savedSettings = saveAiSettings(settings);
     setSettings(savedSettings);
-    setSavedMessage(canUseAi(savedSettings) ? 'AI settings saved. OpenAI generation is ready.' : 'AI settings saved. Add a key and enable AI when ready.');
-    onStatusChange?.(canUseAi(savedSettings) ? 'AI settings saved' : 'AI settings saved without active key');
+    setSavedMessage(canUseAi(savedSettings) ? 'Kodiak Cloud AI preferences saved.' : 'AI disabled. Local generator will be used.');
+    onStatusChange?.(canUseAi(savedSettings) ? 'Kodiak Cloud AI preferences saved' : 'AI disabled');
     window.setTimeout(() => setSavedMessage(''), 2800);
   };
 
   const handleClear = () => {
     clearAiSettings();
     setSettings(defaultAiSettings);
-    setSavedMessage('AI settings cleared from this browser.');
-    onStatusChange?.('AI settings cleared');
+    setSavedMessage('AI preferences reset. Kodiak Cloud AI is back on.');
+    onStatusChange?.('AI preferences reset');
     window.setTimeout(() => setSavedMessage(''), 2800);
   };
 
@@ -46,13 +46,13 @@ export function AiSettingsPanel({ compact = false, onStatusChange }: AiSettingsP
       <div className="ai-settings-heading">
         <div className="section-heading">
           <p className="eyebrow">AI Engine</p>
-          <h2>{compact ? 'OpenAI generation settings.' : 'Connect Kodiak Cast to OpenAI.'}</h2>
+          <h2>{compact ? 'Kodiak Cloud AI preferences.' : 'Kodiak Cloud AI is built in.'}</h2>
           <p>
-            Store a local API key for development, choose the model/style, then use Generate Starter Kit to create real AI output for each podcast project.
+            Customers should never paste their own AI keys. Kodiak Cast calls our local AI gateway in development and our hosted backend when we launch.
           </p>
         </div>
         <div className={canUseAi(settings) ? 'ai-engine-status ready' : 'ai-engine-status'}>
-          <span>{canUseAi(settings) ? 'AI Ready' : 'Local Mode'}</span>
+          <span>{canUseAi(settings) ? 'Cloud AI On' : 'Local Mode'}</span>
           <strong>{settings.model}</strong>
         </div>
       </div>
@@ -65,21 +65,9 @@ export function AiSettingsPanel({ compact = false, onStatusChange }: AiSettingsP
             type="checkbox"
           />
           <span>
-            <strong>Use OpenAI when generating</strong>
-            <small>Falls back to Kodiak local templates if AI is off or fails.</small>
+            <strong>Use Kodiak Cloud AI when generating</strong>
+            <small>Falls back to Kodiak local templates if the gateway is offline or the key is missing.</small>
           </span>
-        </label>
-
-        <label>
-          OpenAI API key
-          <input
-            autoComplete="off"
-            onChange={(event) => updateSettings('apiKey', event.target.value)}
-            placeholder="sk-..."
-            type="password"
-            value={settings.apiKey}
-          />
-          <small className="field-note">Development only: saved in this browser localStorage. We will move keys server-side before launch.</small>
         </label>
 
         <label>
@@ -89,6 +77,7 @@ export function AiSettingsPanel({ compact = false, onStatusChange }: AiSettingsP
             placeholder="gpt-5.1-mini"
             value={settings.model}
           />
+          <small className="field-note">Server-side only. The OpenAI key stays in .env and never goes to the browser.</small>
         </label>
 
         <label>
@@ -126,10 +115,10 @@ export function AiSettingsPanel({ compact = false, onStatusChange }: AiSettingsP
 
       <div className="ai-settings-actions">
         <button className="primary-button" onClick={handleSave} type="button">
-          Save AI Settings
+          Save AI Preferences
         </button>
-        <button className="secondary-button danger-button" onClick={handleClear} type="button">
-          Clear Key
+        <button className="secondary-button" onClick={handleClear} type="button">
+          Reset Preferences
         </button>
         {savedMessage ? <span className="copy-status">{savedMessage}</span> : null}
       </div>
