@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BlueprintForm } from './components/BlueprintForm';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import {
   EditableBlueprint,
   type BlueprintListField,
@@ -33,6 +34,14 @@ const emptyInputs: PodcastInputs = {
   cadence: 'weekly',
   goal: ''
 };
+
+type PendingConfirmation = {
+  confirmLabel: string;
+  message: string;
+  onConfirm: () => void;
+  title: string;
+  variant?: 'default' | 'danger';
+} | null;
 
 function createProjectId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -116,6 +125,7 @@ function App() {
   const [saveStatus, setSaveStatus] = useState(
     restoredWorkspace ? 'Restored saved workspace' : 'Ready to create first project'
   );
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation>(null);
 
   const activeProject = useMemo(
     () => projects.find((project) => project.id === activeProjectId) ?? projects[0] ?? null,
@@ -206,41 +216,55 @@ function App() {
       return;
     }
 
-    const confirmed = window.confirm(`Delete "${projectToDelete.name}"? This only removes it from this local workspace.`);
+    setPendingConfirmation({
+      confirmLabel: 'Delete Project',
+      message: 'This only removes it from this local workspace. Your other podcast projects stay untouched.',
+      onConfirm: () => {
+        const nextProjects = projects.filter((project) => project.id !== projectId);
+        setProjects(nextProjects);
+        setSaveStatus('Project deleted');
 
-    if (!confirmed) {
-      return;
-    }
+        if (nextProjects.length === 0) {
+          setActiveProjectId('');
+          setActiveSection('dashboard');
+          return;
+        }
 
-    const nextProjects = projects.filter((project) => project.id !== projectId);
-    setProjects(nextProjects);
-    setSaveStatus('Project deleted');
-
-    if (nextProjects.length === 0) {
-      setActiveProjectId('');
-      setActiveSection('dashboard');
-      return;
-    }
-
-    if (activeProjectId === projectId) {
-      setActiveProjectId(nextProjects[0].id);
-      setActiveSection('dashboard');
-    }
+        if (activeProjectId === projectId) {
+          setActiveProjectId(nextProjects[0].id);
+          setActiveSection('dashboard');
+        }
+      },
+      title: `Delete "${projectToDelete.name}"?`,
+      variant: 'danger'
+    });
   };
 
   const handleResetWorkspace = () => {
-    const confirmed = window.confirm('Clear every local podcast project from this browser?');
+    setPendingConfirmation({
+      confirmLabel: 'Clear Workspace',
+      message: 'This clears every local podcast project from this browser. Use it when you want a fresh Kodiak Cast workspace.',
+      onConfirm: () => {
+        clearWorkspace();
+        setProjects([]);
+        setActiveProjectId('');
+        setLastSavedAt('');
+        setSaveStatus('Workspace cleared');
+        setActiveSection('dashboard');
+      },
+      title: 'Clear the whole workspace?',
+      variant: 'danger'
+    });
+  };
 
-    if (!confirmed) {
+  const handleConfirmAction = () => {
+    if (!pendingConfirmation) {
       return;
     }
 
-    clearWorkspace();
-    setProjects([]);
-    setActiveProjectId('');
-    setLastSavedAt('');
-    setSaveStatus('Workspace cleared');
-    setActiveSection('dashboard');
+    const action = pendingConfirmation.onConfirm;
+    setPendingConfirmation(null);
+    action();
   };
 
   const updateBlueprintText = (field: BlueprintTextField, value: string) => {
@@ -570,6 +594,17 @@ function App() {
           </section>
         )}
       </main>
+
+      {pendingConfirmation ? (
+        <ConfirmDialog
+          confirmLabel={pendingConfirmation.confirmLabel}
+          message={pendingConfirmation.message}
+          onCancel={() => setPendingConfirmation(null)}
+          onConfirm={handleConfirmAction}
+          title={pendingConfirmation.title}
+          variant={pendingConfirmation.variant}
+        />
+      ) : null}
     </div>
   );
 }
