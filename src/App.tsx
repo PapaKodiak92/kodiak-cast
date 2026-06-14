@@ -10,7 +10,11 @@ import { EpisodeCard } from './components/EpisodeCard';
 import { GuestCard } from './components/GuestCard';
 import { MetricCard } from './components/MetricCard';
 import { Sidebar } from './components/Sidebar';
-import { StarterKitPanel } from './components/StarterKitPanel';
+import {
+  StarterKitPanel,
+  type StarterKitListField,
+  type StarterKitTextField
+} from './components/StarterKitPanel';
 import { generateBlueprint, generateGuestLeads, generateStarterKit } from './lib/blueprint';
 import { clearWorkspace, loadWorkspace, saveWorkspace } from './lib/workspaceStorage';
 import type {
@@ -19,7 +23,8 @@ import type {
   GuestLead,
   PodcastBlueprint,
   PodcastInputs,
-  PodcastProject
+  PodcastProject,
+  PodcastStarterKit
 } from './types';
 import './styles.css';
 import './blueprintEditor.css';
@@ -118,6 +123,18 @@ function formatSavedAt(savedAt: string) {
   }).format(savedDate);
 }
 
+function copyWithFallback(value: string) {
+  const textArea = document.createElement('textarea');
+  textArea.value = value;
+  textArea.setAttribute('readonly', 'true');
+  textArea.style.position = 'fixed';
+  textArea.style.opacity = '0';
+  document.body.appendChild(textArea);
+  textArea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textArea);
+}
+
 function App() {
   const restoredWorkspace = useMemo(() => loadWorkspace(), []);
   const initialProjects = restoredWorkspace?.projects ?? [];
@@ -130,6 +147,7 @@ function App() {
   const [saveStatus, setSaveStatus] = useState(
     restoredWorkspace ? 'Restored saved workspace' : 'Ready to create first project'
   );
+  const [copyStatus, setCopyStatus] = useState('');
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation>(null);
 
   const activeProject = useMemo(
@@ -209,6 +227,71 @@ function App() {
     setActiveSection('blueprint');
   };
 
+  const handleRegenerateBlueprint = () => {
+    updateActiveProject((project) => {
+      const nextBlueprint = generateBlueprint(project.inputs);
+
+      return {
+        ...project,
+        blueprint: nextBlueprint,
+        starterKit: generateStarterKit(project.inputs, nextBlueprint)
+      };
+    });
+
+    setSaveStatus('Blueprint regenerated');
+  };
+
+  const handleRegenerateEpisodes = () => {
+    updateActiveProject((project) => {
+      const nextBlueprint = generateBlueprint(project.inputs);
+
+      return {
+        ...project,
+        episodes: buildEpisodesForProject(project.id, nextBlueprint)
+      };
+    });
+
+    setSaveStatus('Episode ideas regenerated');
+    setActiveSection('episodes');
+  };
+
+  const handleRegenerateGuests = () => {
+    updateActiveProject((project) => ({
+      ...project,
+      guests: buildGuestsForProject(project.id, project.inputs)
+    }));
+
+    setSaveStatus('Guest list regenerated');
+    setActiveSection('guests');
+  };
+
+  const handleRegenerateLaunchPlan = () => {
+    updateActiveProject((project) => {
+      const nextBlueprint = generateBlueprint(project.inputs);
+
+      return {
+        ...project,
+        blueprint: {
+          ...project.blueprint,
+          launchChecklist: nextBlueprint.launchChecklist
+        },
+        launchItems: nextBlueprint.launchChecklist
+      };
+    });
+
+    setSaveStatus('Launch plan regenerated');
+    setActiveSection('launch');
+  };
+
+  const handleRegenerateStarterKit = () => {
+    updateActiveProject((project) => ({
+      ...project,
+      starterKit: generateStarterKit(project.inputs, project.blueprint)
+    }));
+
+    setSaveStatus('Starter kit assets regenerated');
+  };
+
   const handleCreateProject = () => {
     const nextProject = createBlankProject(projects.length + 1);
 
@@ -276,6 +359,34 @@ function App() {
     action();
   };
 
+  const handleCopyStarterKit = (label: string, value: string) => {
+    const runCopy = async () => {
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(value);
+        } else {
+          copyWithFallback(value);
+        }
+
+        setCopyStatus(`${label} copied`);
+        setSaveStatus(`${label} copied`);
+        window.setTimeout(() => setCopyStatus(''), 2500);
+      } catch {
+        try {
+          copyWithFallback(value);
+          setCopyStatus(`${label} copied`);
+          setSaveStatus(`${label} copied`);
+          window.setTimeout(() => setCopyStatus(''), 2500);
+        } catch {
+          setCopyStatus('Unable to copy');
+          setSaveStatus('Unable to copy');
+        }
+      }
+    };
+
+    void runCopy();
+  };
+
   const updateBlueprintText = (field: BlueprintTextField, value: string) => {
     updateActiveProject((project) => ({
       ...project,
@@ -316,6 +427,50 @@ function App() {
           ...project.blueprint,
           [field]: nextItems.length > 0 ? nextItems : ['']
         }
+      };
+    });
+  };
+
+  const updateStarterKitText = (field: StarterKitTextField, value: string) => {
+    updateActiveProject((project) => ({
+      ...project,
+      starterKit: {
+        ...project.starterKit,
+        [field]: value
+      }
+    }));
+  };
+
+  const updateStarterKitListItem = (field: StarterKitListField, index: number, value: string) => {
+    updateActiveProject((project) => ({
+      ...project,
+      starterKit: {
+        ...project.starterKit,
+        [field]: project.starterKit[field].map((item, itemIndex) => (itemIndex === index ? value : item))
+      } as PodcastStarterKit
+    }));
+  };
+
+  const addStarterKitListItem = (field: StarterKitListField) => {
+    updateActiveProject((project) => ({
+      ...project,
+      starterKit: {
+        ...project.starterKit,
+        [field]: [...project.starterKit[field], 'New item to shape']
+      } as PodcastStarterKit
+    }));
+  };
+
+  const removeStarterKitListItem = (field: StarterKitListField, index: number) => {
+    updateActiveProject((project) => {
+      const nextItems = project.starterKit[field].filter((_, itemIndex) => itemIndex !== index);
+
+      return {
+        ...project,
+        starterKit: {
+          ...project.starterKit,
+          [field]: nextItems.length > 0 ? nextItems : ['']
+        } as PodcastStarterKit
       };
     });
   };
@@ -393,7 +548,7 @@ function App() {
                 </p>
               </div>
 
-              {projects.length === 0 ? (
+              {!hasProjects ? (
                 <article className="project-card empty-project-card">
                   <div>
                     <span>Start here</span>
@@ -486,6 +641,36 @@ function App() {
               <>
                 <BlueprintForm inputs={activeProject.inputs} onChange={handleInputsChange} onGenerate={handleGenerate} />
 
+                <section className="panel regeneration-panel">
+                  <div className="section-heading">
+                    <p className="eyebrow">Workbench Controls</p>
+                    <h2>Regenerate only the piece you want.</h2>
+                    <p>
+                      Keep your project intact while refreshing one section at a time. Later these buttons will call the AI individually.
+                    </p>
+                  </div>
+                  <div className="regeneration-actions">
+                    <button className="primary-button" onClick={handleGenerate} type="button">
+                      Generate Full Starter Kit
+                    </button>
+                    <button className="secondary-button" onClick={handleRegenerateBlueprint} type="button">
+                      Regenerate Blueprint
+                    </button>
+                    <button className="secondary-button" onClick={handleRegenerateEpisodes} type="button">
+                      Regenerate Episodes
+                    </button>
+                    <button className="secondary-button" onClick={handleRegenerateGuests} type="button">
+                      Regenerate Guests
+                    </button>
+                    <button className="secondary-button" onClick={handleRegenerateLaunchPlan} type="button">
+                      Regenerate Launch Plan
+                    </button>
+                    <button className="secondary-button" onClick={handleRegenerateStarterKit} type="button">
+                      Regenerate Starter Kit Assets
+                    </button>
+                  </div>
+                </section>
+
                 <EditableBlueprint
                   blueprint={activeProject.blueprint}
                   onAddListItem={addBlueprintListItem}
@@ -494,7 +679,16 @@ function App() {
                   onTextChange={updateBlueprintText}
                 />
 
-                <StarterKitPanel projectName={activeProject.name} starterKit={activeProject.starterKit} />
+                <StarterKitPanel
+                  copyStatus={copyStatus}
+                  onAddListItem={addStarterKitListItem}
+                  onCopy={handleCopyStarterKit}
+                  onListItemChange={updateStarterKitListItem}
+                  onRemoveListItem={removeStarterKitListItem}
+                  onTextChange={updateStarterKitText}
+                  projectName={activeProject.name}
+                  starterKit={activeProject.starterKit}
+                />
               </>
             ) : (
               <section className="panel empty-section-panel">
@@ -594,7 +788,16 @@ function App() {
                   </div>
                 </section>
 
-                <StarterKitPanel projectName={activeProject.name} starterKit={activeProject.starterKit} />
+                <StarterKitPanel
+                  copyStatus={copyStatus}
+                  onAddListItem={addStarterKitListItem}
+                  onCopy={handleCopyStarterKit}
+                  onListItemChange={updateStarterKitListItem}
+                  onRemoveListItem={removeStarterKitListItem}
+                  onTextChange={updateStarterKitText}
+                  projectName={activeProject.name}
+                  starterKit={activeProject.starterKit}
+                />
               </>
             ) : (
               <section className="panel empty-section-panel">
