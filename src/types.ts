@@ -51,6 +51,14 @@ export interface ChecklistItem {
   done: boolean;
 }
 
+export interface PodcastStarterKit {
+  trailerScript: string;
+  firstEpisodeOutline: string[];
+  socialLaunchPosts: string[];
+  recordingSetup: string[];
+  weeklyWorkflow: string[];
+}
+
 export interface PodcastProject {
   id: string;
   name: string;
@@ -61,6 +69,7 @@ export interface PodcastProject {
   launchItems: ChecklistItem[];
   episodes: EpisodeIdea[];
   guests: GuestLead[];
+  starterKit: PodcastStarterKit;
 }
 
 export interface WorkspacePayload {
