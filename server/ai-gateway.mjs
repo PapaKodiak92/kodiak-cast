@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 
 const PORT = Number(process.env.KODIAK_AI_PORT || 8787);
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
+const DEFAULT_AI_MODEL = 'gpt-5.4-mini';
+const KNOWN_BAD_MODEL_IDS = new Set(['gpt-5.1-mini']);
 
 function loadEnvFile(filePath) {
   if (!existsSync(filePath)) {
@@ -81,9 +83,19 @@ function readJsonBody(request) {
   });
 }
 
+function normalizeModel(value) {
+  const model = typeof value === 'string' ? value.trim() : '';
+
+  if (!model || KNOWN_BAD_MODEL_IDS.has(model)) {
+    return DEFAULT_AI_MODEL;
+  }
+
+  return model;
+}
+
 function sanitizeOpenAiRequest(body) {
   const record = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
-  const model = typeof record.model === 'string' && record.model.trim() ? record.model.trim() : 'gpt-5.1-mini';
+  const model = normalizeModel(record.model);
   const input = typeof record.input === 'string' && record.input.trim() ? record.input.trim() : '';
   const temperature = typeof record.temperature === 'number' ? record.temperature : 0.7;
   const maxOutputTokens = typeof record.max_output_tokens === 'number' ? record.max_output_tokens : 6500;
@@ -164,6 +176,7 @@ const server = createServer(async (request, response) => {
     sendJson(response, 200, {
       ok: true,
       aiKeyConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+      defaultModel: DEFAULT_AI_MODEL,
       mode: 'kodiak-cloud-ai'
     });
     return;
@@ -183,5 +196,5 @@ const server = createServer(async (request, response) => {
 
 server.listen(PORT, '127.0.0.1', () => {
   const readyState = process.env.OPENAI_API_KEY?.trim() ? 'ready' : 'missing OPENAI_API_KEY';
-  console.log(`[Kodiak AI] Gateway listening at http://127.0.0.1:${PORT} (${readyState})`);
+  console.log(`[Kodiak AI] Gateway listening at http://127.0.0.1:${PORT} (${readyState}, default model ${DEFAULT_AI_MODEL})`);
 });
