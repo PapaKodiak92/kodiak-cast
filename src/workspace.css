@@ -1,7 +1,7 @@
 .hero-actions {
   display: grid;
   gap: 10px;
-  min-width: 208px;
+  min-width: 240px;
 }
 
 .secondary-button {
@@ -22,6 +22,39 @@
   border-color: rgba(245, 158, 11, 0.44);
   background: rgba(245, 158, 11, 0.1);
   color: var(--text);
+}
+
+.danger-button:hover {
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.project-picker {
+  gap: 7px;
+  color: #dbeafe;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.project-picker select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.72);
+  color: var(--text);
+  outline: none;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 0.92rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.project-picker select:focus {
+  border-color: rgba(245, 158, 11, 0.68);
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1);
 }
 
 .save-status {
@@ -53,10 +86,77 @@
   box-shadow: 0 0 18px rgba(34, 197, 94, 0.52);
 }
 
+.project-library-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.project-card {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.74);
+}
+
+.project-card.active {
+  border-color: rgba(245, 158, 11, 0.48);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(192, 132, 252, 0.1));
+}
+
+.project-card span {
+  color: var(--accent-strong);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.project-card h3 {
+  margin: 8px 0 8px;
+  color: #fff7ed;
+  font-size: 1.18rem;
+  letter-spacing: -0.04em;
+}
+
+.project-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.project-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.project-card-actions .secondary-button {
+  min-height: 40px;
+  padding: 9px 12px;
+}
+
+@media (max-width: 1040px) {
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 720px) {
   .hero-actions,
   .hero-actions .primary-button,
   .hero-actions .secondary-button {
     width: 100%;
+  }
+
+  .project-card-actions {
+    display: grid;
   }
 }
