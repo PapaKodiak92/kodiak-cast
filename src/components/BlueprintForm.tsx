@@ -15,8 +15,11 @@ export function BlueprintForm({ inputs, onChange, onGenerate }: BlueprintFormPro
     <section className="panel form-panel">
       <div className="section-heading">
         <p className="eyebrow">Setup Wizard</p>
-        <h2>Build the show blueprint</h2>
-        <p>Answer the core questions. For now this runs locally; later this becomes the AI-powered blueprint generator.</p>
+        <h2>Generate the podcast starter kit</h2>
+        <p>
+          Answer the core questions. Kodiak Cast will create the blueprint, first episodes, guest angles,
+          launch checklist, trailer copy, launch posts, and production rhythm for this project.
+        </p>
       </div>
 
       <div className="form-grid">
@@ -52,7 +55,7 @@ export function BlueprintForm({ inputs, onChange, onGenerate }: BlueprintFormPro
       </label>
 
       <button className="primary-button" onClick={onGenerate} type="button">
-        Generate Blueprint
+        Generate Starter Kit
       </button>
     </section>
   );
