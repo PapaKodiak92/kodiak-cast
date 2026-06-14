@@ -13,8 +13,9 @@
 }
 
 .project-wizard {
-  display: grid;
-  gap: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   width: min(920px, 100%);
   max-height: calc(100vh - 56px);
   overflow-y: auto;
@@ -98,6 +99,12 @@
   align-items: start;
 }
 
+.wizard-main-column {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
 .wizard-copy-card,
 .show-type-card,
 .wizard-form-grid {
@@ -145,6 +152,10 @@
   resize: vertical;
 }
 
+.compact-wizard-form textarea {
+  min-height: 74px;
+}
+
 .show-type-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -176,7 +187,7 @@
 }
 
 .compact-wizard-form {
-  margin-top: 14px;
+  margin-top: 0;
 }
 
 .wizard-actions {
@@ -184,7 +195,9 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
-  padding-top: 4px;
+  margin-top: 2px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
 }
 
 @media (max-width: 860px) {
