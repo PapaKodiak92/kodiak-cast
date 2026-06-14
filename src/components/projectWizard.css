@@ -126,6 +126,29 @@
   padding: 18px;
 }
 
+.identity-card {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.wizard-side-field {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  color: #e2e8f0;
+  font-weight: 900;
+}
+
+.wizard-side-field input {
+  width: 100%;
+}
+
+.tone-side-field {
+  padding-top: 16px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
 .show-type-controls {
   display: grid;
   gap: 14px;
