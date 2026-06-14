@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { AiSettingsPanel } from './components/AiSettingsPanel';
 import { BlueprintForm } from './components/BlueprintForm';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import {
@@ -18,6 +19,8 @@ import {
   type StarterKitTextField
 } from './components/StarterKitPanel';
 import { generateBlueprint, generateGuestLeads, generateStarterKit } from './lib/blueprint';
+import { canUseAi, loadAiSettings } from './lib/aiSettings';
+import { generateAiStarterKit, type AiStarterKitResult } from './lib/openAiGenerator';
 import { clearWorkspace, loadWorkspace, saveWorkspace } from './lib/workspaceStorage';
 import type {
   ChecklistItem,
@@ -34,6 +37,7 @@ import './styles.css';
 import './blueprintEditor.css';
 import './workspace.css';
 import './launchCommand.css';
+import './aiSettings.css';
 
 type PendingConfirmation = {
   confirmLabel: string;
@@ -90,6 +94,7 @@ function cloneEpisodes(episodes: EpisodeIdea[], namespace: string) {
   return episodes.map((episode, index) => ({
     ...episode,
     id: `${namespace}-episode-${index + 1}-${episode.id}`,
+    status: normalizeEpisodeStatus(episode.status),
     segments: [...episode.segments],
     clipIdeas: [...episode.clipIdeas]
   }));
@@ -134,6 +139,27 @@ function createPodcastProject(inputs: PodcastInputs, fallbackName = 'Untitled Po
   };
 }
 
+function applyGeneratedKit(project: PodcastProject, generatedKit: AiStarterKitResult): PodcastProject {
+  const launchItems = generatedKit.launchItems.map((item, index) =>
+    normalizeLaunchItem({ ...item, id: `${project.id}-launch-${index + 1}-${item.id}` }, index)
+  );
+  const episodes = cloneEpisodes(generatedKit.episodes, project.id);
+  const guests = cloneGuests(generatedKit.guests, project.id);
+
+  return {
+    ...project,
+    blueprint: {
+      ...generatedKit.blueprint,
+      firstEpisodes: episodes,
+      launchChecklist: launchItems
+    },
+    episodes,
+    guests,
+    launchItems,
+    starterKit: generatedKit.starterKit
+  };
+}
+
 function formatSavedAt(savedAt: string) {
   if (!savedAt) {
     return 'Not saved yet';
@@ -163,6 +189,10 @@ function copyWithFallback(value: string) {
   textArea.select();
   document.execCommand('copy');
   document.body.removeChild(textArea);
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Something went wrong.';
 }
 
 function formatEpisodeOutline(episode: EpisodeIdea) {
@@ -273,6 +303,7 @@ function App() {
   const [saveStatus, setSaveStatus] = useState(
     restoredWorkspace ? 'Restored saved workspace' : 'Ready to create first project'
   );
+  const [aiStatus, setAiStatus] = useState('AI generator waiting for settings');
   const [copyStatus, setCopyStatus] = useState('');
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation>(null);
   const [isProjectWizardOpen, setProjectWizardOpen] = useState(false);
@@ -333,6 +364,32 @@ function App() {
     updateProject(activeProject.id, updater);
   };
 
+  const tryGenerateWithAi = async (inputs: PodcastInputs) => {
+    const settings = loadAiSettings();
+
+    if (!canUseAi(settings)) {
+      return null;
+    }
+
+    setAiStatus(`Asking OpenAI (${settings.model}) to build the starter kit...`);
+    const generatedKit = await generateAiStarterKit(inputs, settings);
+    setAiStatus('OpenAI starter kit generated');
+    return generatedKit;
+  };
+
+  const generateLocalKitForProject = (project: PodcastProject) => {
+    const nextBlueprint = generateBlueprint(project.inputs);
+
+    return {
+      ...project,
+      blueprint: nextBlueprint,
+      launchItems: buildLaunchItems(nextBlueprint),
+      episodes: buildEpisodesForProject(project.id, nextBlueprint),
+      guests: buildGuestsForProject(project.id, project.inputs),
+      starterKit: generateStarterKit(project.inputs, nextBlueprint)
+    };
+  };
+
   const handleInputsChange = (nextInputs: PodcastInputs) => {
     updateActiveProject((project) => ({
       ...project,
@@ -341,27 +398,55 @@ function App() {
     }));
   };
 
-  const handleGenerate = () => {
-    updateActiveProject((project) => {
-      const nextBlueprint = generateBlueprint(project.inputs);
-      const nextStarterKit = generateStarterKit(project.inputs, nextBlueprint);
+  const handleGenerate = async () => {
+    if (!activeProject) {
+      return;
+    }
 
-      return {
-        ...project,
-        blueprint: nextBlueprint,
-        launchItems: buildLaunchItems(nextBlueprint),
-        episodes: buildEpisodesForProject(project.id, nextBlueprint),
-        guests: buildGuestsForProject(project.id, project.inputs),
-        starterKit: nextStarterKit
-      };
-    });
+    try {
+      const generatedKit = await tryGenerateWithAi(activeProject.inputs);
 
-    setSaveStatus('Starter kit generated');
+      if (generatedKit) {
+        updateProject(activeProject.id, (project) => applyGeneratedKit(project, generatedKit));
+        setActiveSection('blueprint');
+        setSaveStatus('AI starter kit generated');
+        return;
+      }
+    } catch (error) {
+      setAiStatus(`AI failed: ${getErrorMessage(error)} Using local generator.`);
+    }
+
+    updateProject(activeProject.id, generateLocalKitForProject);
+    setSaveStatus('Local starter kit generated');
     setActiveSection('blueprint');
   };
 
-  const handleRegenerateBlueprint = () => {
-    updateActiveProject((project) => {
+  const handleRegenerateBlueprint = async () => {
+    if (!activeProject) {
+      return;
+    }
+
+    try {
+      const generatedKit = await tryGenerateWithAi(activeProject.inputs);
+
+      if (generatedKit) {
+        updateProject(activeProject.id, (project) => ({
+          ...project,
+          blueprint: {
+            ...generatedKit.blueprint,
+            firstEpisodes: project.episodes,
+            launchChecklist: project.launchItems
+          },
+          starterKit: generatedKit.starterKit
+        }));
+        setSaveStatus('AI blueprint regenerated');
+        return;
+      }
+    } catch (error) {
+      setAiStatus(`AI failed: ${getErrorMessage(error)} Using local blueprint.`);
+    }
+
+    updateProject(activeProject.id, (project) => {
       const nextBlueprint = generateBlueprint(project.inputs);
 
       return {
@@ -370,12 +455,31 @@ function App() {
         starterKit: generateStarterKit(project.inputs, nextBlueprint)
       };
     });
-
     setSaveStatus('Blueprint regenerated');
   };
 
-  const handleRegenerateEpisodes = () => {
-    updateActiveProject((project) => {
+  const handleRegenerateEpisodes = async () => {
+    if (!activeProject) {
+      return;
+    }
+
+    try {
+      const generatedKit = await tryGenerateWithAi(activeProject.inputs);
+
+      if (generatedKit) {
+        updateProject(activeProject.id, (project) => ({
+          ...project,
+          episodes: cloneEpisodes(generatedKit.episodes, project.id)
+        }));
+        setSaveStatus('AI episode ideas regenerated');
+        setActiveSection('episodes');
+        return;
+      }
+    } catch (error) {
+      setAiStatus(`AI failed: ${getErrorMessage(error)} Using local episodes.`);
+    }
+
+    updateProject(activeProject.id, (project) => {
       const nextBlueprint = generateBlueprint(project.inputs);
 
       return {
@@ -383,45 +487,108 @@ function App() {
         episodes: buildEpisodesForProject(project.id, nextBlueprint)
       };
     });
-
     setSaveStatus('Episode ideas regenerated');
     setActiveSection('episodes');
   };
 
-  const handleRegenerateGuests = () => {
-    updateActiveProject((project) => ({
+  const handleRegenerateGuests = async () => {
+    if (!activeProject) {
+      return;
+    }
+
+    try {
+      const generatedKit = await tryGenerateWithAi(activeProject.inputs);
+
+      if (generatedKit) {
+        updateProject(activeProject.id, (project) => ({
+          ...project,
+          guests: cloneGuests(generatedKit.guests, project.id)
+        }));
+        setSaveStatus('AI guest list regenerated');
+        setActiveSection('guests');
+        return;
+      }
+    } catch (error) {
+      setAiStatus(`AI failed: ${getErrorMessage(error)} Using local guests.`);
+    }
+
+    updateProject(activeProject.id, (project) => ({
       ...project,
       guests: buildGuestsForProject(project.id, project.inputs)
     }));
-
     setSaveStatus('Guest list regenerated');
     setActiveSection('guests');
   };
 
-  const handleRegenerateLaunchPlan = () => {
-    updateActiveProject((project) => {
+  const handleRegenerateLaunchPlan = async () => {
+    if (!activeProject) {
+      return;
+    }
+
+    try {
+      const generatedKit = await tryGenerateWithAi(activeProject.inputs);
+
+      if (generatedKit) {
+        const nextLaunchItems = generatedKit.launchItems.map((item, index) =>
+          normalizeLaunchItem({ ...item, id: `${activeProject.id}-launch-${index + 1}-${item.id}` }, index)
+        );
+        updateProject(activeProject.id, (project) => ({
+          ...project,
+          blueprint: {
+            ...project.blueprint,
+            launchChecklist: nextLaunchItems
+          },
+          launchItems: nextLaunchItems
+        }));
+        setSaveStatus('AI launch plan regenerated');
+        setActiveSection('launch');
+        return;
+      }
+    } catch (error) {
+      setAiStatus(`AI failed: ${getErrorMessage(error)} Using local launch plan.`);
+    }
+
+    updateProject(activeProject.id, (project) => {
       const nextBlueprint = generateBlueprint(project.inputs);
+      const nextLaunchItems = buildLaunchItems(nextBlueprint);
 
       return {
         ...project,
         blueprint: {
           ...project.blueprint,
-          launchChecklist: buildLaunchItems(nextBlueprint)
+          launchChecklist: nextLaunchItems
         },
-        launchItems: buildLaunchItems(nextBlueprint)
+        launchItems: nextLaunchItems
       };
     });
-
     setSaveStatus('Launch plan regenerated');
     setActiveSection('launch');
   };
 
-  const handleRegenerateStarterKit = () => {
-    updateActiveProject((project) => ({
+  const handleRegenerateStarterKit = async () => {
+    if (!activeProject) {
+      return;
+    }
+
+    try {
+      const generatedKit = await tryGenerateWithAi(activeProject.inputs);
+
+      if (generatedKit) {
+        updateProject(activeProject.id, (project) => ({
+          ...project,
+          starterKit: generatedKit.starterKit
+        }));
+        setSaveStatus('AI starter kit assets regenerated');
+        return;
+      }
+    } catch (error) {
+      setAiStatus(`AI failed: ${getErrorMessage(error)} Using local assets.`);
+    }
+
+    updateProject(activeProject.id, (project) => ({
       ...project,
       starterKit: generateStarterKit(project.inputs, project.blueprint)
     }));
-
     setSaveStatus('Starter kit assets regenerated');
   };
 
@@ -429,14 +596,25 @@ function App() {
     setProjectWizardOpen(true);
   };
 
-  const handleCreateProjectFromWizard = (inputs: PodcastInputs) => {
-    const nextProject = createPodcastProject(inputs, `Podcast Project ${projects.length + 1}`);
+  const handleCreateProjectFromWizard = async (inputs: PodcastInputs) => {
+    setProjectWizardOpen(false);
+    setSaveStatus('Creating project...');
+    let nextProject = createPodcastProject(inputs, `Podcast Project ${projects.length + 1}`);
+
+    try {
+      const generatedKit = await tryGenerateWithAi(inputs);
+
+      if (generatedKit) {
+        nextProject = applyGeneratedKit(nextProject, generatedKit);
+      }
+    } catch (error) {
+      setAiStatus(`AI failed: ${getErrorMessage(error)} Created with local starter kit.`);
+    }
 
     setProjects((currentProjects) => [...currentProjects, nextProject]);
     setActiveProjectId(nextProject.id);
     setActiveSection('blueprint');
     setSaveStatus('Project created and starter kit generated');
-    setProjectWizardOpen(false);
   };
 
   const handleDeleteProject = (projectId: string) => {
@@ -762,6 +940,9 @@ function App() {
             <button className="secondary-button" disabled={!activeProject} onClick={() => setActiveSection('blueprint')} type="button">
               Open Blueprint
             </button>
+            <button className="secondary-button" onClick={() => setActiveSection('ai')} type="button">
+              AI Settings
+            </button>
             <button className="secondary-button" disabled={!hasProjects} onClick={handleResetWorkspace} type="button">
               Reset Workspace
             </button>
@@ -841,17 +1022,17 @@ function App() {
             <section className="panel two-column-panel">
               <div>
                 <p className="eyebrow">Next Action</p>
-                <h2>{activeProject ? 'Get launch-ready and export the plan.' : 'Create your first real podcast project.'}</h2>
+                <h2>{activeProject ? 'Generate with AI, then get launch-ready.' : 'Create your first real podcast project.'}</h2>
                 <p>
                   {activeProject
-                    ? 'Edit the next launch task, schedule what matters, then export the starter kit when the plan is ready to move outside the app.'
-                    : 'Start with your own podcast idea instead of a demo project. The workspace will save each show separately as you build it.'}
+                    ? 'Connect OpenAI in AI Settings, regenerate the pieces you want, then export the starter kit when the plan is ready.'
+                    : 'Start with your own podcast idea. The workspace will save each show separately as you build it.'}
                 </p>
               </div>
               <div className="action-list">
-                <span>{activeProject ? 'Open Launch Command Center' : 'Create the first podcast project'}</span>
+                <span>{activeProject ? 'Open AI Settings' : 'Create the first podcast project'}</span>
+                <span>Generate or improve the starter kit</span>
                 <span>Move ready episodes toward recording</span>
-                <span>Copy one guest pitch and send it</span>
                 <span>Export the full starter kit when ready</span>
               </div>
             </section>
@@ -876,12 +1057,14 @@ function App() {
               <>
                 <BlueprintForm inputs={activeProject.inputs} onChange={handleInputsChange} onGenerate={handleGenerate} />
 
+                <AiSettingsPanel compact onStatusChange={setAiStatus} />
+
                 <section className="panel regeneration-panel">
                   <div className="section-heading">
                     <p className="eyebrow">Workbench Controls</p>
                     <h2>Regenerate only the piece you want.</h2>
                     <p>
-                      Keep your project intact while refreshing one section at a time. Later these buttons will call the AI individually.
+                      If OpenAI is enabled, these buttons ask AI for fresh content. If AI is off or fails, Kodiak Cast uses the local generator.
                     </p>
                   </div>
                   <div className="regeneration-actions">
@@ -904,6 +1087,7 @@ function App() {
                       Regenerate Starter Kit Assets
                     </button>
                   </div>
+                  <p className="ai-warning-note">{aiStatus}</p>
                 </section>
 
                 <EditableBlueprint
@@ -1099,12 +1283,33 @@ function App() {
             )}
           </section>
         )}
+
+        {activeSection === 'ai' && (
+          <section className="content-stack">
+            <AiSettingsPanel onStatusChange={setAiStatus} />
+            <section className="panel two-column-panel">
+              <div>
+                <p className="eyebrow">How it works</p>
+                <h2>OpenAI powers generation. Kodiak local templates stay as fallback.</h2>
+                <p>
+                  Save your key, enable AI, then return to Blueprint and generate a starter kit. If the request fails, the app keeps working with the local generator.
+                </p>
+              </div>
+              <div className="action-list">
+                <span>{aiStatus}</span>
+                <span>Full starter kit generation</span>
+                <span>Section regeneration for blueprint, episodes, guests, launch, and assets</span>
+                <span>Server-side key storage comes later with Supabase</span>
+              </div>
+            </section>
+          </section>
+        )}
       </main>
 
       <ProjectWizard
         isOpen={isProjectWizardOpen}
         onCancel={() => setProjectWizardOpen(false)}
-        onCreate={handleCreateProjectFromWizard}
+        onCreate={(inputs) => void handleCreateProjectFromWizard(inputs)}
         projectNumber={projects.length + 1}
       />
 
