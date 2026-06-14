@@ -5,7 +5,9 @@
   "type": "module",
   "description": "Kodiak Cast - plan, launch, and maintain podcasts.",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
+    "dev": "node server/dev.mjs",
+    "dev:vite": "vite --host 0.0.0.0",
+    "api": "node server/ai-gateway.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit --pretty"
