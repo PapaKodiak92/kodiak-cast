@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import type { PodcastStarterKit } from '../types';
+import '../stageFlow.css';
 
 export type StarterKitTextField = 'trailerScript';
 export type StarterKitListField = Exclude<keyof PodcastStarterKit, StarterKitTextField>;
+
+type StarterStage = 'trailer' | 'outline' | 'posts' | 'setup' | 'workflow';
 
 interface StarterKitPanelProps {
   copyStatus?: string;
@@ -31,6 +35,14 @@ const starterKitLabels: Record<StarterKitListField, string> = {
   recordingSetup: 'Recording setup checklist',
   weeklyWorkflow: 'Weekly production workflow'
 };
+
+const starterStages: { id: StarterStage; label: string; helper: string }[] = [
+  { id: 'trailer', label: 'Trailer', helper: 'What the show is and who it is for' },
+  { id: 'outline', label: 'Episode 1', helper: 'The first episode shape' },
+  { id: 'posts', label: 'Launch posts', helper: 'Ready-to-edit announcement copy' },
+  { id: 'setup', label: 'Recording setup', helper: 'Gear, room, and workflow basics' },
+  { id: 'workflow', label: 'Weekly rhythm', helper: 'Repeatable production cadence' }
+];
 
 function formatList(label: string, items: string[]) {
   return `${label}\n${items.map((item, index) => `${index + 1}. ${item}`).join('\n')}`;
@@ -63,7 +75,7 @@ function EditableStarterList({
   onRemoveListItem
 }: EditableStarterListProps) {
   return (
-    <article className="starter-kit-card">
+    <article className="starter-kit-card active-starter-stage-card">
       <div className="starter-kit-card-heading">
         <strong>{label}</strong>
         <button className="secondary-button small-action-button" onClick={() => onCopy(copyLabel, formatList(label, items))} type="button">
@@ -104,29 +116,13 @@ export function StarterKitPanel({
   projectName,
   starterKit
 }: StarterKitPanelProps) {
+  const [activeStage, setActiveStage] = useState<StarterStage>('trailer');
   const fullStarterKit = formatFullStarterKit(projectName, starterKit);
 
-  return (
-    <section className="panel starter-kit-panel">
-      <div className="starter-kit-heading-row">
-        <div className="section-heading starter-kit-heading-copy">
-          <p className="eyebrow">Starter Kit</p>
-          <h2>Launch assets for {projectName}.</h2>
-          <p>
-            Edit the usable pieces around this project: trailer copy, first episode shape, launch posts,
-            recording setup, and a weekly production rhythm.
-          </p>
-        </div>
-        <div className="starter-kit-header-actions">
-          <button className="primary-button" onClick={() => onCopy('Full starter kit', fullStarterKit)} type="button">
-            Copy Full Starter Kit
-          </button>
-          {copyStatus ? <span className="copy-status">{copyStatus}</span> : null}
-        </div>
-      </div>
-
-      <div className="starter-kit-grid">
-        <article className="starter-kit-card wide-starter-card">
+  const renderActiveStage = () => {
+    if (activeStage === 'trailer') {
+      return (
+        <article className="starter-kit-card wide-starter-card active-starter-stage-card">
           <div className="starter-kit-card-heading">
             <strong>Trailer script</strong>
             <button className="secondary-button small-action-button" onClick={() => onCopy('Trailer script', starterKit.trailerScript)} type="button">
@@ -137,11 +133,15 @@ export function StarterKitPanel({
             aria-label="Trailer script"
             className="starter-script-editor"
             onChange={(event) => onTextChange('trailerScript', event.target.value)}
-            rows={7}
+            rows={9}
             value={starterKit.trailerScript}
           />
         </article>
+      );
+    }
 
+    if (activeStage === 'outline') {
+      return (
         <EditableStarterList
           copyLabel="First episode outline"
           field="firstEpisodeOutline"
@@ -152,7 +152,11 @@ export function StarterKitPanel({
           onListItemChange={onListItemChange}
           onRemoveListItem={onRemoveListItem}
         />
+      );
+    }
 
+    if (activeStage === 'posts') {
+      return (
         <EditableStarterList
           copyLabel="Social launch posts"
           field="socialLaunchPosts"
@@ -163,7 +167,11 @@ export function StarterKitPanel({
           onListItemChange={onListItemChange}
           onRemoveListItem={onRemoveListItem}
         />
+      );
+    }
 
+    if (activeStage === 'setup') {
+      return (
         <EditableStarterList
           copyLabel="Recording setup checklist"
           field="recordingSetup"
@@ -174,18 +182,63 @@ export function StarterKitPanel({
           onListItemChange={onListItemChange}
           onRemoveListItem={onRemoveListItem}
         />
+      );
+    }
 
-        <EditableStarterList
-          copyLabel="Weekly production workflow"
-          field="weeklyWorkflow"
-          items={starterKit.weeklyWorkflow}
-          label={starterKitLabels.weeklyWorkflow}
-          onAddListItem={onAddListItem}
-          onCopy={onCopy}
-          onListItemChange={onListItemChange}
-          onRemoveListItem={onRemoveListItem}
-        />
+    return (
+      <EditableStarterList
+        copyLabel="Weekly production workflow"
+        field="weeklyWorkflow"
+        items={starterKit.weeklyWorkflow}
+        label={starterKitLabels.weeklyWorkflow}
+        onAddListItem={onAddListItem}
+        onCopy={onCopy}
+        onListItemChange={onListItemChange}
+        onRemoveListItem={onRemoveListItem}
+      />
+    );
+  };
+
+  return (
+    <section className="panel starter-kit-panel staged-panel">
+      <div className="stage-kicker-row">
+        <span className="stage-pill">Stage 4 of 5</span>
+        <span className="stage-ready">Starter kit review</span>
       </div>
+
+      <div className="starter-kit-heading-row">
+        <div className="section-heading starter-kit-heading-copy">
+          <p className="eyebrow">Starter Kit</p>
+          <h2>Review one launch asset at a time.</h2>
+          <p>
+            Instead of dumping every generated asset onto one page, Kodiak Cast now walks through the trailer, first episode, posts, setup, and weekly rhythm as separate review stages.
+          </p>
+        </div>
+        <div className="starter-kit-header-actions">
+          <button className="primary-button" onClick={() => onCopy('Full starter kit', fullStarterKit)} type="button">
+            Copy Full Starter Kit
+          </button>
+          {copyStatus ? <span className="copy-status">{copyStatus}</span> : null}
+        </div>
+      </div>
+
+      <div className="starter-stage-tabs" role="tablist" aria-label="Starter kit review stages">
+        {starterStages.map((stage, index) => (
+          <button
+            aria-selected={activeStage === stage.id}
+            className={activeStage === stage.id ? 'starter-stage-tab active' : 'starter-stage-tab'}
+            key={stage.id}
+            onClick={() => setActiveStage(stage.id)}
+            role="tab"
+            type="button"
+          >
+            <span>{index + 1}. {stage.label}</span>
+            <small>{stage.helper}</small>
+          </button>
+        ))}
+      </div>
+
+      <div className="starter-stage-panel">{renderActiveStage()}</div>
     </section>
   );
 }
