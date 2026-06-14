@@ -106,7 +106,12 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
     }));
   };
 
-  const canContinue = draft.showName.trim().length > 0 && draft.niche.trim().length > 0;
+  const canContinue =
+    draft.showName.trim().length > 0 &&
+    draft.niche.trim().length > 0 &&
+    draft.audience.trim().length > 0 &&
+    draft.tone.trim().length > 0 &&
+    draft.goal.trim().length > 0;
 
   const createProject = () => {
     const nextInputs: PodcastInputs = {
@@ -153,8 +158,8 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
               <p className="eyebrow">Step 1</p>
               <h3>Tell Kodiak Cast what show this is.</h3>
               <p>
-                This creates a real project instead of an empty placeholder. The starter kit will use this context for the
-                blueprint, episode ideas, launch plan, guest wishlist, and social posts.
+                This is where the voice belongs: name, topic, listener, tone, cadence, and goal. Once those are set,
+                the next step only chooses the closest show structure.
               </p>
             </div>
 
@@ -199,6 +204,15 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
               </label>
 
               <label className="wizard-wide-label">
+                Tone
+                <input
+                  onChange={(event) => updateDraft('tone', event.target.value)}
+                  placeholder="honest, raw, practical, funny, motivational, and no-BS"
+                  value={draft.tone}
+                />
+              </label>
+
+              <label className="wizard-wide-label">
                 Main goal
                 <textarea
                   onChange={(event) => updateDraft('goal', event.target.value)}
@@ -214,8 +228,7 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
               <p className="eyebrow">Step 2</p>
               <h3>Pick the closest show type.</h3>
               <p>
-                Choose the structure first, then tune the voice. This keeps the AI focused without making you fight a
-                massive form.
+                This step is only about structure. Choose the closest format and tweak the episode flow if needed.
               </p>
 
               <div className="selected-type-pill">
@@ -225,16 +238,7 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
 
               <div className="wizard-inline-fields">
                 <label>
-                  Tone
-                  <input
-                    onChange={(event) => updateDraft('tone', event.target.value)}
-                    placeholder={selectedOption.tone}
-                    value={draft.tone}
-                  />
-                </label>
-
-                <label>
-                  Format
+                  Episode format
                   <textarea
                     onChange={(event) => updateDraft('format', event.target.value)}
                     placeholder={selectedOption.format}
