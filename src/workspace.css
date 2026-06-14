@@ -175,9 +175,57 @@
   padding: 9px 12px;
 }
 
+.regeneration-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.regeneration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.regeneration-actions .primary-button,
+.regeneration-actions .secondary-button {
+  min-height: 42px;
+  padding: 10px 14px;
+}
+
 .starter-kit-panel {
   display: grid;
   gap: 18px;
+}
+
+.starter-kit-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.starter-kit-heading-copy {
+  margin-bottom: 0;
+}
+
+.starter-kit-header-actions {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+  min-width: 220px;
+}
+
+.copy-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 8px 12px;
+  border: 1px solid rgba(34, 197, 94, 0.32);
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.1);
+  color: #bbf7d0;
+  font-size: 0.82rem;
+  font-weight: 900;
 }
 
 .starter-kit-grid {
@@ -194,6 +242,13 @@
   border: 1px solid var(--line);
   border-radius: 18px;
   background: rgba(2, 6, 23, 0.42);
+}
+
+.starter-kit-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .starter-kit-card strong {
@@ -216,9 +271,41 @@
   line-height: 1.65;
 }
 
+.starter-script-editor,
+.starter-list-row textarea {
+  resize: vertical;
+  min-height: 96px;
+  background: rgba(2, 6, 23, 0.72);
+  line-height: 1.55;
+}
+
+.starter-edit-list,
 .post-stack {
   display: grid;
   gap: 10px;
+}
+
+.starter-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.starter-list-row .secondary-button {
+  align-self: stretch;
+}
+
+.small-action-button {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+}
+
+.starter-add-button {
+  justify-self: start;
+  min-height: 40px;
+  padding: 9px 14px;
 }
 
 .starter-kit-card ul {
@@ -230,6 +317,14 @@
   .starter-kit-grid {
     grid-template-columns: 1fr;
   }
+
+  .starter-kit-heading-row {
+    display: grid;
+  }
+
+  .starter-kit-header-actions {
+    justify-items: stretch;
+  }
 }
 
 @media (max-width: 720px) {
@@ -239,7 +334,9 @@
     width: 100%;
   }
 
-  .project-card-actions {
+  .project-card-actions,
+  .starter-list-row,
+  .regeneration-actions {
     display: grid;
   }
 }
