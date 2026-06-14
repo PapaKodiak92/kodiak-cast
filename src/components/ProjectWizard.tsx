@@ -154,13 +154,22 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
 
         {step === 1 ? (
           <div className="wizard-body">
-            <div className="wizard-copy-card">
+            <div className="wizard-copy-card identity-card">
               <p className="eyebrow">Step 1</p>
               <h3>Tell Kodiak Cast what show this is.</h3>
               <p>
-                This is where the voice belongs: name, topic, listener, tone, cadence, and goal. Once those are set,
+                This is where the voice belongs: name, topic, listener, cadence, and goal. Once those are set,
                 the next step only chooses the closest show structure.
               </p>
+
+              <label className="wizard-side-field tone-side-field">
+                Tone / voice
+                <input
+                  onChange={(event) => updateDraft('tone', event.target.value)}
+                  placeholder="honest, raw, practical, funny, motivational, and no-BS"
+                  value={draft.tone}
+                />
+              </label>
             </div>
 
             <div className="wizard-form-grid">
@@ -183,15 +192,6 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
                   <option value="monthly">Monthly</option>
                   <option value="seasonal">Seasonal</option>
                 </select>
-              </label>
-
-              <label className="wizard-wide-label priority-field">
-                Tone / voice
-                <input
-                  onChange={(event) => updateDraft('tone', event.target.value)}
-                  placeholder="honest, raw, practical, funny, motivational, and no-BS"
-                  value={draft.tone}
-                />
               </label>
 
               <label className="wizard-wide-label">
