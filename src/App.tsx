@@ -8,6 +8,7 @@ import {
 } from './components/EditableBlueprint';
 import { EpisodeCard } from './components/EpisodeCard';
 import { GuestCard } from './components/GuestCard';
+import { LaunchCommandCenter } from './components/LaunchCommandCenter';
 import { MetricCard } from './components/MetricCard';
 import { ProjectWizard } from './components/ProjectWizard';
 import { Sidebar } from './components/Sidebar';
@@ -32,6 +33,7 @@ import type {
 import './styles.css';
 import './blueprintEditor.css';
 import './workspace.css';
+import './launchCommand.css';
 
 type PendingConfirmation = {
   confirmLabel: string;
@@ -71,6 +73,19 @@ function normalizeEpisodeStatus(status: EpisodeStatus): EpisodeStatus {
   return status;
 }
 
+function normalizeLaunchItem(item: ChecklistItem, index = 0): ChecklistItem {
+  const status = item.status ?? (item.done ? 'done' : 'todo');
+
+  return {
+    ...item,
+    done: status === 'done',
+    status,
+    priority: item.priority ?? (index < 3 ? 'high' : 'medium'),
+    dueDate: item.dueDate ?? '',
+    notes: item.notes ?? ''
+  };
+}
+
 function cloneEpisodes(episodes: EpisodeIdea[], namespace: string) {
   return episodes.map((episode, index) => ({
     ...episode,
@@ -95,6 +110,10 @@ function buildGuestsForProject(projectId: string, inputs: PodcastInputs) {
   return cloneGuests(generateGuestLeads(inputs), projectId);
 }
 
+function buildLaunchItems(blueprint: PodcastBlueprint) {
+  return blueprint.launchChecklist.map(normalizeLaunchItem);
+}
+
 function createPodcastProject(inputs: PodcastInputs, fallbackName = 'Untitled Podcast'): PodcastProject {
   const now = new Date().toISOString();
   const id = createProjectId();
@@ -108,7 +127,7 @@ function createPodcastProject(inputs: PodcastInputs, fallbackName = 'Untitled Po
     updatedAt: now,
     inputs,
     blueprint,
-    launchItems: blueprint.launchChecklist,
+    launchItems: buildLaunchItems(blueprint),
     episodes: buildEpisodesForProject(id, blueprint),
     guests: buildGuestsForProject(id, inputs),
     starterKit: generateStarterKit(inputs, blueprint)
@@ -170,7 +189,7 @@ function formatEpisodeOutline(episode: EpisodeIdea) {
 
 function formatGuestPitch(project: PodcastProject, guest: GuestLead) {
   return [
-    `Hey [Name],`,
+    'Hey [Name],',
     '',
     `I am building ${project.name}, a podcast about ${project.inputs.niche || 'a focused topic'}.`,
     `I think your perspective around “${guest.episodeAngle || 'this angle'}” would give listeners something useful and honest.`,
@@ -207,6 +226,41 @@ function makeBlankGuest(project: PodcastProject): GuestLead {
   };
 }
 
+function makeBlankLaunchTask(project: PodcastProject): ChecklistItem {
+  return {
+    id: createWorkItemId(`${project.id}-launch`),
+    label: 'New launch task',
+    done: false,
+    status: 'todo',
+    priority: 'medium',
+    dueDate: '',
+    notes: ''
+  };
+}
+
+function calculateLaunchReadiness(project: PodcastProject | null) {
+  if (!project) {
+    return 0;
+  }
+
+  const completedLaunchTasks = project.launchItems.filter((item) => item.done || item.status === 'done').length;
+  const readyEpisodes = project.episodes.filter((episode) => {
+    const status = normalizeEpisodeStatus(episode.status);
+    return status === 'ready' || status === 'recorded' || status === 'published';
+  }).length;
+
+  const checks = [
+    Boolean(project.blueprint.description && project.blueprint.listenerPromise && project.blueprint.tagline),
+    Boolean(project.starterKit.trailerScript && project.starterKit.socialLaunchPosts.length),
+    project.episodes.length >= 3,
+    readyEpisodes >= 1,
+    project.guests.length >= 1,
+    completedLaunchTasks > 0
+  ];
+
+  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+}
+
 function App() {
   const restoredWorkspace = useMemo(() => loadWorkspace(), []);
   const initialProjects = restoredWorkspace?.projects ?? [];
@@ -230,11 +284,12 @@ function App() {
   const hasProjects = projects.length > 0;
   const activeEpisodes = activeProject?.episodes ?? [];
   const activeGuests = activeProject?.guests ?? [];
-  const completedLaunchItems = activeProject?.launchItems.filter((item) => item.done).length ?? 0;
+  const completedLaunchItems = activeProject?.launchItems.filter((item) => item.done || item.status === 'done').length ?? 0;
   const launchRemaining = activeProject ? activeProject.launchItems.length - completedLaunchItems : 0;
   const episodesInProgress = activeEpisodes.filter((episode) => normalizeEpisodeStatus(episode.status) !== 'published').length;
   const episodesReadyToRecord = activeEpisodes.filter((episode) => normalizeEpisodeStatus(episode.status) === 'ready').length;
   const guestsToContact = activeGuests.filter((guest) => guest.status === 'wishlist').length;
+  const launchReadiness = calculateLaunchReadiness(activeProject);
   const formattedSaveTime = useMemo(() => formatSavedAt(lastSavedAt), [lastSavedAt]);
 
   useEffect(() => {
@@ -263,7 +318,8 @@ function App() {
           id: project.id,
           createdAt: project.createdAt,
           updatedAt: new Date().toISOString(),
-          name: nextProject.inputs.showName.trim() || nextProject.name || 'Untitled Podcast'
+          name: nextProject.inputs.showName.trim() || nextProject.name || 'Untitled Podcast',
+          launchItems: nextProject.launchItems.map(normalizeLaunchItem)
         };
       })
     );
@@ -293,7 +349,7 @@ function App() {
       return {
         ...project,
         blueprint: nextBlueprint,
-        launchItems: nextBlueprint.launchChecklist,
+        launchItems: buildLaunchItems(nextBlueprint),
         episodes: buildEpisodesForProject(project.id, nextBlueprint),
         guests: buildGuestsForProject(project.id, project.inputs),
         starterKit: nextStarterKit
@@ -350,9 +406,9 @@ function App() {
         ...project,
         blueprint: {
           ...project.blueprint,
-          launchChecklist: nextBlueprint.launchChecklist
+          launchChecklist: buildLaunchItems(nextBlueprint)
         },
-        launchItems: nextBlueprint.launchChecklist
+        launchItems: buildLaunchItems(nextBlueprint)
       };
     });
 
@@ -441,7 +497,7 @@ function App() {
     action();
   };
 
-  const handleCopyStarterKit = (label: string, value: string) => {
+  const handleCopyContent = (label: string, value: string) => {
     const runCopy = async () => {
       try {
         if (navigator.clipboard?.writeText) {
@@ -632,11 +688,40 @@ function App() {
     setSaveStatus('Guest marked contacted');
   };
 
-  const toggleLaunchItem = (id: string) => {
+  const updateLaunchTask = (taskId: string, nextTask: ChecklistItem) => {
     updateActiveProject((project) => ({
       ...project,
-      launchItems: project.launchItems.map((item) => (item.id === id ? { ...item, done: !item.done } : item))
+      launchItems: project.launchItems.map((item, index) =>
+        item.id === taskId ? normalizeLaunchItem(nextTask, index) : normalizeLaunchItem(item, index)
+      )
     }));
+    setSaveStatus('Launch task updated');
+  };
+
+  const addLaunchTask = () => {
+    updateActiveProject((project) => ({
+      ...project,
+      launchItems: [...project.launchItems, makeBlankLaunchTask(project)]
+    }));
+    setSaveStatus('Launch task added');
+  };
+
+  const deleteLaunchTask = (taskId: string) => {
+    updateActiveProject((project) => ({
+      ...project,
+      launchItems: project.launchItems.filter((item) => item.id !== taskId)
+    }));
+    setSaveStatus('Launch task deleted');
+  };
+
+  const markLaunchTaskDone = (taskId: string) => {
+    updateActiveProject((project) => ({
+      ...project,
+      launchItems: project.launchItems.map((item) =>
+        item.id === taskId ? { ...item, done: true, status: 'done' } : item
+      )
+    }));
+    setSaveStatus('Launch task marked done');
   };
 
   return (
@@ -746,6 +831,7 @@ function App() {
 
             <div className="metric-grid">
               <MetricCard label="Projects" value={String(projects.length)} note="Podcast workspaces" />
+              <MetricCard label="Readiness" value={`${launchReadiness}%`} note="Launch score" />
               <MetricCard label="In Progress" value={String(episodesInProgress)} note="Episodes not published" />
               <MetricCard label="Ready" value={String(episodesReadyToRecord)} note="Episodes ready to record" />
               <MetricCard label="Guests" value={String(guestsToContact)} note="Guest leads to contact" />
@@ -755,18 +841,18 @@ function App() {
             <section className="panel two-column-panel">
               <div>
                 <p className="eyebrow">Next Action</p>
-                <h2>{activeProject ? 'Turn the generated plan into a working pipeline.' : 'Create your first real podcast project.'}</h2>
+                <h2>{activeProject ? 'Get launch-ready and export the plan.' : 'Create your first real podcast project.'}</h2>
                 <p>
                   {activeProject
-                    ? 'Shape the episode cards, move them through the pipeline, and turn guest ideas into outreach instead of letting generated content sit there.'
+                    ? 'Edit the next launch task, schedule what matters, then export the starter kit when the plan is ready to move outside the app.'
                     : 'Start with your own podcast idea instead of a demo project. The workspace will save each show separately as you build it.'}
                 </p>
               </div>
               <div className="action-list">
-                <span>{activeProject ? 'Edit the next episode outline' : 'Create the first podcast project'}</span>
+                <span>{activeProject ? 'Open Launch Command Center' : 'Create the first podcast project'}</span>
                 <span>Move ready episodes toward recording</span>
                 <span>Copy one guest pitch and send it</span>
-                <span>Close the next launch checklist item</span>
+                <span>Export the full starter kit when ready</span>
               </div>
             </section>
 
@@ -831,7 +917,7 @@ function App() {
                 <StarterKitPanel
                   copyStatus={copyStatus}
                   onAddListItem={addStarterKitListItem}
-                  onCopy={handleCopyStarterKit}
+                  onCopy={handleCopyContent}
                   onListItemChange={updateStarterKitListItem}
                   onRemoveListItem={removeStarterKitListItem}
                   onTextChange={updateStarterKitText}
@@ -881,7 +967,7 @@ function App() {
                       episode={episode}
                       key={episode.id}
                       onChange={(nextEpisode) => updateEpisode(episode.id, nextEpisode)}
-                      onCopyOutline={() => handleCopyStarterKit('Episode outline', formatEpisodeOutline(episode))}
+                      onCopyOutline={() => handleCopyContent('Episode outline', formatEpisodeOutline(episode))}
                       onDelete={() => deleteEpisode(episode.id)}
                       onDuplicate={() => duplicateEpisode(episode)}
                       onMoveStatus={() => moveEpisodeStatus(episode)}
@@ -937,7 +1023,7 @@ function App() {
                         guest={guest}
                         key={guest.id}
                         onChange={(nextGuest) => updateGuest(guest.id, nextGuest)}
-                        onCopyPitch={() => handleCopyStarterKit('Guest pitch', formatGuestPitch(activeProject, guest))}
+                        onCopyPitch={() => handleCopyContent('Guest pitch', formatGuestPitch(activeProject, guest))}
                         onDelete={() => deleteGuest(guest.id)}
                         onMarkContacted={() => markGuestContacted(guest)}
                       />
@@ -980,27 +1066,20 @@ function App() {
           <section className="content-stack">
             {activeProject ? (
               <>
-                <section className="panel">
-                  <div className="section-heading">
-                    <p className="eyebrow">Launch Checklist</p>
-                    <h2>Keep {activeProject.name} moving.</h2>
-                    <p>Click items as they are completed. Each project saves its own progress locally in this browser.</p>
-                  </div>
-
-                  <div className="checklist">
-                    {activeProject.launchItems.map((item: ChecklistItem) => (
-                      <label key={item.id} className={item.done ? 'checked' : ''}>
-                        <input checked={item.done} onChange={() => toggleLaunchItem(item.id)} type="checkbox" />
-                        <span>{item.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </section>
+                <LaunchCommandCenter
+                  copyStatus={copyStatus}
+                  onAddTask={addLaunchTask}
+                  onCopy={handleCopyContent}
+                  onDeleteTask={deleteLaunchTask}
+                  onMarkDone={markLaunchTaskDone}
+                  onTaskChange={updateLaunchTask}
+                  project={activeProject}
+                />
 
                 <StarterKitPanel
                   copyStatus={copyStatus}
                   onAddListItem={addStarterKitListItem}
-                  onCopy={handleCopyStarterKit}
+                  onCopy={handleCopyContent}
                   onListItemChange={updateStarterKitListItem}
                   onRemoveListItem={removeStarterKitListItem}
                   onTextChange={updateStarterKitText}
