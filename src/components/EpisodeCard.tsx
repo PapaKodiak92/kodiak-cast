@@ -12,6 +12,8 @@ interface EpisodeCardProps {
 
 const episodeStatuses: EpisodeStatus[] = ['idea', 'outlined', 'ready', 'recorded', 'published'];
 
+type EpisodeTextField = 'title' | 'hook' | 'mainIdea' | 'listenerTakeaway' | 'notes' | 'publishDate';
+
 function normalizeEpisodeStatus(status: EpisodeStatus): EpisodeStatus {
   if (status === 'outline') {
     return 'outlined';
@@ -45,8 +47,12 @@ export function EpisodeCard({
   onDuplicate,
   onMoveStatus
 }: EpisodeCardProps) {
-  const updateField = (field: keyof EpisodeIdea, value: string | EpisodeStatus) => {
+  const updateTextField = (field: EpisodeTextField, value: string) => {
     onChange?.({ ...episode, [field]: value });
+  };
+
+  const updateStatus = (status: EpisodeStatus) => {
+    onChange?.({ ...episode, status });
   };
 
   const updateListItem = (field: 'segments' | 'clipIdeas', index: number, value: string) => {
@@ -107,7 +113,7 @@ export function EpisodeCard({
           Status
           <select
             value={normalizeEpisodeStatus(episode.status)}
-            onChange={(event) => updateField('status', event.target.value as EpisodeStatus)}
+            onChange={(event) => updateStatus(event.target.value as EpisodeStatus)}
           >
             {episodeStatuses.map((status) => (
               <option key={status} value={status}>
@@ -123,12 +129,12 @@ export function EpisodeCard({
 
       <label>
         Title
-        <input value={episode.title} onChange={(event) => updateField('title', event.target.value)} />
+        <input value={episode.title} onChange={(event) => updateTextField('title', event.target.value)} />
       </label>
 
       <label>
         Hook
-        <textarea rows={3} value={episode.hook} onChange={(event) => updateField('hook', event.target.value)} />
+        <textarea rows={3} value={episode.hook} onChange={(event) => updateTextField('hook', event.target.value)} />
       </label>
 
       <label>
@@ -136,7 +142,7 @@ export function EpisodeCard({
         <textarea
           rows={3}
           value={episode.mainIdea ?? episode.hook ?? ''}
-          onChange={(event) => updateField('mainIdea', event.target.value)}
+          onChange={(event) => updateTextField('mainIdea', event.target.value)}
         />
       </label>
 
@@ -167,7 +173,7 @@ export function EpisodeCard({
         <textarea
           rows={3}
           value={episode.listenerTakeaway ?? safeClipIdeas(episode)[0] ?? ''}
-          onChange={(event) => updateField('listenerTakeaway', event.target.value)}
+          onChange={(event) => updateTextField('listenerTakeaway', event.target.value)}
         />
       </label>
 
@@ -176,13 +182,13 @@ export function EpisodeCard({
         <input
           type="date"
           value={episode.publishDate ?? ''}
-          onChange={(event) => updateField('publishDate', event.target.value)}
+          onChange={(event) => updateTextField('publishDate', event.target.value)}
         />
       </label>
 
       <label>
         Recording notes
-        <textarea rows={4} value={episode.notes ?? ''} onChange={(event) => updateField('notes', event.target.value)} />
+        <textarea rows={4} value={episode.notes ?? ''} onChange={(event) => updateTextField('notes', event.target.value)} />
       </label>
 
       <div className="editable-list-block">
