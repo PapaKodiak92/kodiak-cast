@@ -1,4 +1,5 @@
 import type { PodcastBlueprint } from '../types';
+import '../stageFlow.css';
 
 export type BlueprintTextField = 'name' | 'tagline' | 'description' | 'listenerPromise';
 export type BlueprintListField = 'format' | 'pillars';
@@ -21,15 +22,7 @@ interface EditableListProps {
   onRemoveListItem: (field: BlueprintListField, index: number) => void;
 }
 
-function EditableList({
-  title,
-  helper,
-  items,
-  field,
-  onListItemChange,
-  onAddListItem,
-  onRemoveListItem
-}: EditableListProps) {
+function EditableList({ title, helper, items, field, onListItemChange, onAddListItem, onRemoveListItem }: EditableListProps) {
   return (
     <div className="editable-list-panel">
       <div className="editable-list-heading">
@@ -66,22 +59,20 @@ function EditableList({
   );
 }
 
-export function EditableBlueprint({
-  blueprint,
-  onTextChange,
-  onListItemChange,
-  onAddListItem,
-  onRemoveListItem
-}: EditableBlueprintProps) {
+export function EditableBlueprint({ blueprint, onTextChange, onListItemChange, onAddListItem, onRemoveListItem }: EditableBlueprintProps) {
   return (
-    <section className="panel editor-panel">
+    <section className="panel editor-panel staged-panel">
+      <div className="stage-kicker-row">
+        <span className="stage-pill">Stage 3 of 5</span>
+        <span className="stage-ready">Blueprint review</span>
+      </div>
+
       <div className="section-heading editor-heading">
         <div>
           <p className="eyebrow">Generated Blueprint</p>
-          <h2>Make the draft yours.</h2>
+          <h2>Review the show foundation.</h2>
           <p>
-            The generator gives you a starting point. Edit the title, description, promise, format,
-            and pillars until it sounds like the real show.
+            Work through this layer before editing the launch assets. Confirm the name, promise, description, format, and pillars.
           </p>
         </div>
       </div>
@@ -94,30 +85,18 @@ export function EditableBlueprint({
 
         <label className="wide-label">
           Show description
-          <textarea
-            onChange={(event) => onTextChange('description', event.target.value)}
-            rows={5}
-            value={blueprint.description}
-          />
+          <textarea onChange={(event) => onTextChange('description', event.target.value)} rows={5} value={blueprint.description} />
         </label>
 
         <div className="blueprint-grid editor-grid">
           <label className="editable-card">
             <strong>Tagline</strong>
-            <textarea
-              onChange={(event) => onTextChange('tagline', event.target.value)}
-              rows={3}
-              value={blueprint.tagline}
-            />
+            <textarea onChange={(event) => onTextChange('tagline', event.target.value)} rows={3} value={blueprint.tagline} />
           </label>
 
           <label className="editable-card">
             <strong>Listener promise</strong>
-            <textarea
-              onChange={(event) => onTextChange('listenerPromise', event.target.value)}
-              rows={5}
-              value={blueprint.listenerPromise}
-            />
+            <textarea onChange={(event) => onTextChange('listenerPromise', event.target.value)} rows={5} value={blueprint.listenerPromise} />
           </label>
         </div>
 
