@@ -185,6 +185,15 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
                 </select>
               </label>
 
+              <label className="wizard-wide-label priority-field">
+                Tone / voice
+                <input
+                  onChange={(event) => updateDraft('tone', event.target.value)}
+                  placeholder="honest, raw, practical, funny, motivational, and no-BS"
+                  value={draft.tone}
+                />
+              </label>
+
               <label className="wizard-wide-label">
                 Topic / niche
                 <textarea
@@ -200,15 +209,6 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
                   onChange={(event) => updateDraft('audience', event.target.value)}
                   placeholder="people who feel stuck, off schedule, overwhelmed, or tired of restarting"
                   value={draft.audience}
-                />
-              </label>
-
-              <label className="wizard-wide-label">
-                Tone
-                <input
-                  onChange={(event) => updateDraft('tone', event.target.value)}
-                  placeholder="honest, raw, practical, funny, motivational, and no-BS"
-                  value={draft.tone}
                 />
               </label>
 
