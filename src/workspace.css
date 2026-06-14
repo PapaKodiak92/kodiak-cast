@@ -1,0 +1,62 @@
+.hero-actions {
+  display: grid;
+  gap: 10px;
+  min-width: 208px;
+}
+
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #dbeafe;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.secondary-button:hover {
+  border-color: rgba(245, 158, 11, 0.44);
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--text);
+}
+
+.save-status {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.56);
+  color: #dbeafe;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.save-status small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.save-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--good);
+  box-shadow: 0 0 18px rgba(34, 197, 94, 0.52);
+}
+
+@media (max-width: 720px) {
+  .hero-actions,
+  .hero-actions .primary-button,
+  .hero-actions .secondary-button {
+    width: 100%;
+  }
+}
