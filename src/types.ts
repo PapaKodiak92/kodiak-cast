@@ -50,3 +50,20 @@ export interface ChecklistItem {
   label: string;
   done: boolean;
 }
+
+export interface PodcastProject {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  inputs: PodcastInputs;
+  blueprint: PodcastBlueprint;
+  launchItems: ChecklistItem[];
+  episodes: EpisodeIdea[];
+  guests: GuestLead[];
+}
+
+export interface WorkspacePayload {
+  projects: PodcastProject[];
+  activeProjectId: string;
+}
