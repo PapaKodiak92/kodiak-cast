@@ -93,7 +93,7 @@ function buildLaunchChecklist(isRebuildShow: boolean): ChecklistItem[] {
 }
 
 export function generateBlueprint(inputs: PodcastInputs): PodcastBlueprint {
-  const showName = fallback(inputs.showName, 'Kodiak Cast');
+  const showName = fallback(inputs.showName, 'Untitled Podcast');
   const niche = fallback(inputs.niche, 'starting and maintaining a meaningful podcast');
   const audience = fallback(inputs.audience, 'creators who need structure, momentum, and a real launch plan');
   const tone = fallback(inputs.tone, 'honest, practical, focused, and motivational');
