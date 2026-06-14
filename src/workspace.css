@@ -18,13 +18,19 @@
   white-space: nowrap;
 }
 
-.secondary-button:hover {
+.secondary-button:hover:not(:disabled) {
   border-color: rgba(245, 158, 11, 0.44);
   background: rgba(245, 158, 11, 0.1);
   color: var(--text);
 }
 
-.danger-button:hover {
+.primary-button:disabled,
+.secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.danger-button:hover:not(:disabled) {
   border-color: rgba(248, 113, 113, 0.5);
   background: rgba(248, 113, 113, 0.1);
 }
@@ -37,7 +43,8 @@
   letter-spacing: 0.12em;
 }
 
-.project-picker select {
+.project-picker select,
+.empty-picker {
   width: 100%;
   min-height: 46px;
   border: 1px solid var(--line);
@@ -50,6 +57,13 @@
   font-size: 0.92rem;
   text-transform: none;
   letter-spacing: 0;
+}
+
+.empty-picker {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  font-weight: 800;
 }
 
 .project-picker select:focus {
@@ -111,7 +125,25 @@
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(192, 132, 252, 0.1));
 }
 
-.project-card span {
+.empty-project-card,
+.empty-section-panel {
+  border-style: dashed;
+  border-color: rgba(148, 163, 184, 0.34);
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.empty-project-card {
+  max-width: 620px;
+}
+
+.empty-section-panel {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+}
+
+.project-card span,
+.project-picker span {
   color: var(--accent-strong);
   font-size: 0.72rem;
   font-weight: 900;
