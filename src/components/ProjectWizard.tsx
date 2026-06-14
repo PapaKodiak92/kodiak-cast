@@ -210,31 +210,21 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
           </div>
         ) : (
           <div className="wizard-body show-type-step">
-            <div className="wizard-copy-card">
+            <div className="wizard-copy-card show-type-controls">
               <p className="eyebrow">Step 2</p>
               <h3>Pick the closest show type.</h3>
               <p>
-                This gives the generator a structure. You can still edit the format and tone before creating the project.
+                Choose the structure first, then tune the voice. This keeps the AI focused without making you fight a
+                massive form.
               </p>
-            </div>
 
-            <div className="wizard-main-column">
-              <div className="show-type-grid">
-                {showTypeOptions.map((option) => (
-                  <button
-                    className={option.id === selectedShowType ? 'show-type-card selected' : 'show-type-card'}
-                    key={option.id}
-                    onClick={() => selectShowType(option)}
-                    type="button"
-                  >
-                    <strong>{option.title}</strong>
-                    <span>{option.description}</span>
-                  </button>
-                ))}
+              <div className="selected-type-pill">
+                <span>Selected</span>
+                <strong>{selectedOption.title}</strong>
               </div>
 
-              <div className="wizard-form-grid compact-wizard-form">
-                <label className="wizard-wide-label">
+              <div className="wizard-inline-fields">
+                <label>
                   Tone
                   <input
                     onChange={(event) => updateDraft('tone', event.target.value)}
@@ -243,7 +233,7 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
                   />
                 </label>
 
-                <label className="wizard-wide-label">
+                <label>
                   Format
                   <textarea
                     onChange={(event) => updateDraft('format', event.target.value)}
@@ -252,6 +242,20 @@ export function ProjectWizard({ isOpen, onCancel, onCreate, projectNumber }: Pro
                   />
                 </label>
               </div>
+            </div>
+
+            <div className="show-type-grid">
+              {showTypeOptions.map((option) => (
+                <button
+                  className={option.id === selectedShowType ? 'show-type-card selected' : 'show-type-card'}
+                  key={option.id}
+                  onClick={() => selectShowType(option)}
+                  type="button"
+                >
+                  <strong>{option.title}</strong>
+                  <span>{option.description}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}
