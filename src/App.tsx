@@ -9,6 +9,7 @@ import {
 import { EpisodeCard } from './components/EpisodeCard';
 import { GuestCard } from './components/GuestCard';
 import { MetricCard } from './components/MetricCard';
+import { ProjectWizard } from './components/ProjectWizard';
 import { Sidebar } from './components/Sidebar';
 import {
   StarterKitPanel,
@@ -100,10 +101,6 @@ function createPodcastProject(inputs: PodcastInputs, fallbackName = 'Untitled Po
   };
 }
 
-function createBlankProject(projectNumber: number) {
-  return createPodcastProject(emptyInputs, `Podcast Project ${projectNumber}`);
-}
-
 function formatSavedAt(savedAt: string) {
   if (!savedAt) {
     return 'Not saved yet';
@@ -149,6 +146,7 @@ function App() {
   );
   const [copyStatus, setCopyStatus] = useState('');
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation>(null);
+  const [isProjectWizardOpen, setProjectWizardOpen] = useState(false);
 
   const activeProject = useMemo(
     () => projects.find((project) => project.id === activeProjectId) ?? projects[0] ?? null,
@@ -292,13 +290,18 @@ function App() {
     setSaveStatus('Starter kit assets regenerated');
   };
 
-  const handleCreateProject = () => {
-    const nextProject = createBlankProject(projects.length + 1);
+  const handleOpenProjectWizard = () => {
+    setProjectWizardOpen(true);
+  };
+
+  const handleCreateProjectFromWizard = (inputs: PodcastInputs) => {
+    const nextProject = createPodcastProject(inputs, `Podcast Project ${projects.length + 1}`);
 
     setProjects((currentProjects) => [...currentProjects, nextProject]);
     setActiveProjectId(nextProject.id);
     setActiveSection('blueprint');
-    setSaveStatus('New podcast project created');
+    setSaveStatus('Project created and starter kit generated');
+    setProjectWizardOpen(false);
   };
 
   const handleDeleteProject = (projectId: string) => {
@@ -514,7 +517,7 @@ function App() {
                 <div className="empty-picker">No active project yet</div>
               </div>
             )}
-            <button className="primary-button" onClick={handleCreateProject} type="button">
+            <button className="primary-button" onClick={handleOpenProjectWizard} type="button">
               New Podcast Project
             </button>
             <button
@@ -558,7 +561,7 @@ function App() {
                       trailer script, social launch posts, and launch checklist around that idea.
                     </p>
                   </div>
-                  <button className="primary-button" onClick={handleCreateProject} type="button">
+                  <button className="primary-button" onClick={handleOpenProjectWizard} type="button">
                     Create First Project
                   </button>
                 </article>
@@ -695,7 +698,7 @@ function App() {
                 <p className="eyebrow">Blueprint</p>
                 <h2>No project selected.</h2>
                 <p>Create your first podcast project before generating a starter kit.</p>
-                <button className="primary-button" onClick={handleCreateProject} type="button">
+                <button className="primary-button" onClick={handleOpenProjectWizard} type="button">
                   Create First Project
                 </button>
               </section>
@@ -719,7 +722,7 @@ function App() {
               <section className="panel empty-section-panel">
                 <h2>No episode pipeline yet.</h2>
                 <p>Create a podcast project and generate its starter kit to seed episode ideas.</p>
-                <button className="primary-button" onClick={handleCreateProject} type="button">
+                <button className="primary-button" onClick={handleOpenProjectWizard} type="button">
                   Create First Project
                 </button>
               </section>
@@ -755,7 +758,7 @@ function App() {
                 <p className="eyebrow">Guest CRM</p>
                 <h2>No guest workspace yet.</h2>
                 <p>Create a podcast project before tracking guest ideas and outreach angles.</p>
-                <button className="primary-button" onClick={handleCreateProject} type="button">
+                <button className="primary-button" onClick={handleOpenProjectWizard} type="button">
                   Create First Project
                 </button>
               </section>
@@ -804,7 +807,7 @@ function App() {
                 <p className="eyebrow">Launch Checklist</p>
                 <h2>No launch checklist yet.</h2>
                 <p>Create a podcast project and generate its starter kit to build a launch checklist.</p>
-                <button className="primary-button" onClick={handleCreateProject} type="button">
+                <button className="primary-button" onClick={handleOpenProjectWizard} type="button">
                   Create First Project
                 </button>
               </section>
@@ -812,6 +815,13 @@ function App() {
           </section>
         )}
       </main>
+
+      <ProjectWizard
+        isOpen={isProjectWizardOpen}
+        onCancel={() => setProjectWizardOpen(false)}
+        onCreate={handleCreateProjectFromWizard}
+        projectNumber={projects.length + 1}
+      />
 
       {pendingConfirmation ? (
         <ConfirmDialog
