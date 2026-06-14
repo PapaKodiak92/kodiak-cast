@@ -21,7 +21,9 @@ import { clearWorkspace, loadWorkspace, saveWorkspace } from './lib/workspaceSto
 import type {
   ChecklistItem,
   EpisodeIdea,
+  EpisodeStatus,
   GuestLead,
+  GuestStatus,
   PodcastBlueprint,
   PodcastInputs,
   PodcastProject,
@@ -31,16 +33,6 @@ import './styles.css';
 import './blueprintEditor.css';
 import './workspace.css';
 
-const emptyInputs: PodcastInputs = {
-  showName: '',
-  niche: '',
-  audience: '',
-  tone: '',
-  format: '',
-  cadence: 'weekly',
-  goal: ''
-};
-
 type PendingConfirmation = {
   confirmLabel: string;
   message: string;
@@ -49,12 +41,34 @@ type PendingConfirmation = {
   variant?: 'default' | 'danger';
 } | null;
 
+const episodeStatusFlow: EpisodeStatus[] = ['idea', 'outlined', 'ready', 'recorded', 'published'];
+
 function createProjectId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return `project-${crypto.randomUUID()}`;
   }
 
   return `project-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createWorkItemId(prefix: string) {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeEpisodeStatus(status: EpisodeStatus): EpisodeStatus {
+  if (status === 'outline') {
+    return 'outlined';
+  }
+
+  if (status === 'scheduled') {
+    return 'ready';
+  }
+
+  return status;
 }
 
 function cloneEpisodes(episodes: EpisodeIdea[], namespace: string) {
@@ -132,6 +146,67 @@ function copyWithFallback(value: string) {
   document.body.removeChild(textArea);
 }
 
+function formatEpisodeOutline(episode: EpisodeIdea) {
+  const segments = episode.segments?.length ? episode.segments : ['Main talking point'];
+  const clips = episode.clipIdeas?.length ? episode.clipIdeas : [];
+
+  return [
+    `Episode: ${episode.title}`,
+    `Status: ${normalizeEpisodeStatus(episode.status)}`,
+    '',
+    `Hook:\n${episode.hook}`,
+    '',
+    `Main idea:\n${episode.mainIdea || episode.hook}`,
+    '',
+    `Talking points:\n${segments.map((segment, index) => `${index + 1}. ${segment}`).join('\n')}`,
+    '',
+    `Listener takeaway:\n${episode.listenerTakeaway || clips[0] || 'Give the listener one clear next step.'}`,
+    '',
+    `Publish date: ${episode.publishDate || 'Not scheduled yet'}`,
+    '',
+    episode.notes ? `Recording notes:\n${episode.notes}` : 'Recording notes: Add recording notes here.'
+  ].join('\n');
+}
+
+function formatGuestPitch(project: PodcastProject, guest: GuestLead) {
+  return [
+    `Hey [Name],`,
+    '',
+    `I am building ${project.name}, a podcast about ${project.inputs.niche || 'a focused topic'}.`,
+    `I think your perspective around “${guest.episodeAngle || 'this angle'}” would give listeners something useful and honest.`,
+    '',
+    `The reason I think you fit: ${guest.fit || 'you have a story or skill that lines up with the show promise'}.`,
+    '',
+    'Would you be open to joining me for a focused conversation?'
+  ].join('\n');
+}
+
+function makeBlankEpisode(project: PodcastProject): EpisodeIdea {
+  return {
+    id: createWorkItemId(`${project.id}-episode`),
+    title: 'New episode idea',
+    hook: 'Open with the real problem this episode solves.',
+    mainIdea: 'What is the one big idea this episode should prove?',
+    listenerTakeaway: 'Give the listener one clear next step they can actually use.',
+    notes: '',
+    publishDate: '',
+    status: 'idea',
+    segments: ['Set up the problem', 'Tell the story or teach the lesson', 'Give the listener a next action'],
+    clipIdeas: ['One short punchy lesson from the episode']
+  };
+}
+
+function makeBlankGuest(project: PodcastProject): GuestLead {
+  return {
+    id: createWorkItemId(`${project.id}-guest`),
+    name: 'New guest lead',
+    fit: 'Why this guest belongs on the show.',
+    episodeAngle: 'What useful conversation angle would make them say yes?',
+    notes: '',
+    status: 'wishlist'
+  };
+}
+
 function App() {
   const restoredWorkspace = useMemo(() => loadWorkspace(), []);
   const initialProjects = restoredWorkspace?.projects ?? [];
@@ -153,7 +228,13 @@ function App() {
     [activeProjectId, projects]
   );
   const hasProjects = projects.length > 0;
+  const activeEpisodes = activeProject?.episodes ?? [];
+  const activeGuests = activeProject?.guests ?? [];
   const completedLaunchItems = activeProject?.launchItems.filter((item) => item.done).length ?? 0;
+  const launchRemaining = activeProject ? activeProject.launchItems.length - completedLaunchItems : 0;
+  const episodesInProgress = activeEpisodes.filter((episode) => normalizeEpisodeStatus(episode.status) !== 'published').length;
+  const episodesReadyToRecord = activeEpisodes.filter((episode) => normalizeEpisodeStatus(episode.status) === 'ready').length;
+  const guestsToContact = activeGuests.filter((guest) => guest.status === 'wishlist').length;
   const formattedSaveTime = useMemo(() => formatSavedAt(lastSavedAt), [lastSavedAt]);
 
   useEffect(() => {
@@ -205,21 +286,19 @@ function App() {
   };
 
   const handleGenerate = () => {
-    if (!activeProject) {
-      return;
-    }
+    updateActiveProject((project) => {
+      const nextBlueprint = generateBlueprint(project.inputs);
+      const nextStarterKit = generateStarterKit(project.inputs, nextBlueprint);
 
-    const nextBlueprint = generateBlueprint(activeProject.inputs);
-    const nextStarterKit = generateStarterKit(activeProject.inputs, nextBlueprint);
-
-    updateActiveProject((project) => ({
-      ...project,
-      blueprint: nextBlueprint,
-      launchItems: nextBlueprint.launchChecklist,
-      episodes: buildEpisodesForProject(project.id, nextBlueprint),
-      guests: buildGuestsForProject(project.id, activeProject.inputs),
-      starterKit: nextStarterKit
-    }));
+      return {
+        ...project,
+        blueprint: nextBlueprint,
+        launchItems: nextBlueprint.launchChecklist,
+        episodes: buildEpisodesForProject(project.id, nextBlueprint),
+        guests: buildGuestsForProject(project.id, project.inputs),
+        starterKit: nextStarterKit
+      };
+    });
 
     setSaveStatus('Starter kit generated');
     setActiveSection('blueprint');
@@ -478,6 +557,81 @@ function App() {
     });
   };
 
+  const updateEpisode = (episodeId: string, nextEpisode: EpisodeIdea) => {
+    updateActiveProject((project) => ({
+      ...project,
+      episodes: project.episodes.map((episode) => (episode.id === episodeId ? nextEpisode : episode))
+    }));
+  };
+
+  const addEpisode = () => {
+    updateActiveProject((project) => ({
+      ...project,
+      episodes: [...project.episodes, makeBlankEpisode(project)]
+    }));
+    setSaveStatus('Episode added');
+  };
+
+  const deleteEpisode = (episodeId: string) => {
+    updateActiveProject((project) => ({
+      ...project,
+      episodes: project.episodes.filter((episode) => episode.id !== episodeId)
+    }));
+    setSaveStatus('Episode deleted');
+  };
+
+  const duplicateEpisode = (episode: EpisodeIdea) => {
+    updateActiveProject((project) => ({
+      ...project,
+      episodes: [
+        ...project.episodes,
+        {
+          ...episode,
+          id: createWorkItemId(`${project.id}-episode-copy`),
+          title: `${episode.title} Copy`,
+          status: 'idea'
+        }
+      ]
+    }));
+    setSaveStatus('Episode duplicated');
+  };
+
+  const moveEpisodeStatus = (episode: EpisodeIdea) => {
+    const normalizedStatus = normalizeEpisodeStatus(episode.status);
+    const currentIndex = episodeStatusFlow.indexOf(normalizedStatus);
+    const nextStatus = episodeStatusFlow[Math.min(currentIndex + 1, episodeStatusFlow.length - 1)] ?? normalizedStatus;
+    updateEpisode(episode.id, { ...episode, status: nextStatus });
+    setSaveStatus(`Episode moved to ${nextStatus}`);
+  };
+
+  const updateGuest = (guestId: string, nextGuest: GuestLead) => {
+    updateActiveProject((project) => ({
+      ...project,
+      guests: project.guests.map((guest) => (guest.id === guestId ? nextGuest : guest))
+    }));
+  };
+
+  const addGuest = () => {
+    updateActiveProject((project) => ({
+      ...project,
+      guests: [...project.guests, makeBlankGuest(project)]
+    }));
+    setSaveStatus('Guest lead added');
+  };
+
+  const deleteGuest = (guestId: string) => {
+    updateActiveProject((project) => ({
+      ...project,
+      guests: project.guests.filter((guest) => guest.id !== guestId)
+    }));
+    setSaveStatus('Guest lead deleted');
+  };
+
+  const markGuestContacted = (guest: GuestLead) => {
+    updateGuest(guest.id, { ...guest, status: 'contacted' as GuestStatus });
+    setSaveStatus('Guest marked contacted');
+  };
+
   const toggleLaunchItem = (id: string) => {
     updateActiveProject((project) => ({
       ...project,
@@ -495,8 +649,8 @@ function App() {
             <p className="eyebrow">Podcast operating system</p>
             <h2>Plan, launch, and maintain multiple podcasts.</h2>
             <p>
-              Kodiak Cast is becoming an AI-guided workspace for show setup, content generation,
-              guest planning, launch checklists, and repeatable publishing systems.
+              Kodiak Cast is becoming an AI-guided workspace for show setup, content generation, guest planning,
+              launch checklists, and repeatable publishing systems.
             </p>
           </div>
           <div className="hero-actions">
@@ -520,12 +674,7 @@ function App() {
             <button className="primary-button" onClick={handleOpenProjectWizard} type="button">
               New Podcast Project
             </button>
-            <button
-              className="secondary-button"
-              disabled={!activeProject}
-              onClick={() => setActiveSection('blueprint')}
-              type="button"
-            >
+            <button className="secondary-button" disabled={!activeProject} onClick={() => setActiveSection('blueprint')} type="button">
               Open Blueprint
             </button>
             <button className="secondary-button" disabled={!hasProjects} onClick={handleResetWorkspace} type="button">
@@ -597,30 +746,27 @@ function App() {
 
             <div className="metric-grid">
               <MetricCard label="Projects" value={String(projects.length)} note="Podcast workspaces" />
-              <MetricCard label="Active" value={activeProject?.name ?? 'None yet'} note="Current project" />
-              <MetricCard label="Episodes" value={String(activeProject?.episodes.length ?? 0)} note="Ideas ready to shape" />
-              <MetricCard
-                label="Launch"
-                value={activeProject ? `${completedLaunchItems}/${activeProject.launchItems.length}` : '0/0'}
-                note="Checklist complete"
-              />
+              <MetricCard label="In Progress" value={String(episodesInProgress)} note="Episodes not published" />
+              <MetricCard label="Ready" value={String(episodesReadyToRecord)} note="Episodes ready to record" />
+              <MetricCard label="Guests" value={String(guestsToContact)} note="Guest leads to contact" />
+              <MetricCard label="Launch" value={String(launchRemaining)} note="Tasks remaining" />
             </div>
 
             <section className="panel two-column-panel">
               <div>
                 <p className="eyebrow">Next Action</p>
-                <h2>{activeProject ? 'Generate the full starter kit for this show.' : 'Create your first real podcast project.'}</h2>
+                <h2>{activeProject ? 'Turn the generated plan into a working pipeline.' : 'Create your first real podcast project.'}</h2>
                 <p>
                   {activeProject
-                    ? 'Fill out the setup wizard, generate the starter kit, then shape the promise, format, pillars, first episodes, guest list, trailer script, launch posts, and checklist until it sounds like the real show.'
+                    ? 'Shape the episode cards, move them through the pipeline, and turn guest ideas into outreach instead of letting generated content sit there.'
                     : 'Start with your own podcast idea instead of a demo project. The workspace will save each show separately as you build it.'}
                 </p>
               </div>
               <div className="action-list">
-                <span>{activeProject ? 'Choose the active podcast project' : 'Create the first podcast project'}</span>
-                <span>Answer the setup wizard</span>
-                <span>Generate the full starter kit</span>
-                <span>Refine and save the launch assets</span>
+                <span>{activeProject ? 'Edit the next episode outline' : 'Create the first podcast project'}</span>
+                <span>Move ready episodes toward recording</span>
+                <span>Copy one guest pitch and send it</span>
+                <span>Close the next launch checklist item</span>
               </div>
             </section>
 
@@ -629,7 +775,7 @@ function App() {
                 <p className="eyebrow">This Week</p>
                 <h2>{activeProject ? 'Suggested episode focus' : 'No episode focus yet'}</h2>
               </div>
-              {activeProject ? (
+              {activeProject && activeProject.episodes[0] ? (
                 <EpisodeCard episode={activeProject.episodes[0]} />
               ) : (
                 <p>Create a podcast project and generate its starter kit to get the first suggested episode focus.</p>
@@ -708,16 +854,49 @@ function App() {
 
         {activeSection === 'episodes' && (
           <section className="content-stack">
-            <section className="section-heading outside-heading">
-              <p className="eyebrow">Episode Pipeline</p>
-              <h2>Ideas become outlines. Outlines become recordings.</h2>
-            </section>
-            {activeProject ? (
-              <div className="episode-grid">
-                {activeProject.episodes.map((episode) => (
-                  <EpisodeCard key={episode.id} episode={episode} />
-                ))}
+            <section className="panel workspace-toolbar-panel">
+              <div className="section-heading">
+                <p className="eyebrow">Episode Pipeline</p>
+                <h2>Ideas become outlines. Outlines become recordings.</h2>
+                <p>Edit each episode, move it through the status pipeline, copy outlines, and keep recording notes in one place.</p>
               </div>
+              {activeProject ? (
+                <div className="workspace-toolbar-actions">
+                  <button className="primary-button" onClick={addEpisode} type="button">
+                    Add Episode
+                  </button>
+                  <button className="secondary-button" onClick={handleRegenerateEpisodes} type="button">
+                    Regenerate Episodes
+                  </button>
+                </div>
+              ) : null}
+            </section>
+
+            {activeProject ? (
+              activeProject.episodes.length > 0 ? (
+                <div className="episode-grid editable-grid">
+                  {activeProject.episodes.map((episode) => (
+                    <EpisodeCard
+                      editable
+                      episode={episode}
+                      key={episode.id}
+                      onChange={(nextEpisode) => updateEpisode(episode.id, nextEpisode)}
+                      onCopyOutline={() => handleCopyStarterKit('Episode outline', formatEpisodeOutline(episode))}
+                      onDelete={() => deleteEpisode(episode.id)}
+                      onDuplicate={() => duplicateEpisode(episode)}
+                      onMoveStatus={() => moveEpisodeStatus(episode)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <section className="panel empty-section-panel">
+                  <h2>No episodes yet.</h2>
+                  <p>Add an episode or regenerate episode ideas from the project setup.</p>
+                  <button className="primary-button" onClick={addEpisode} type="button">
+                    Add Episode
+                  </button>
+                </section>
+              )
             ) : (
               <section className="panel empty-section-panel">
                 <h2>No episode pipeline yet.</h2>
@@ -734,15 +913,46 @@ function App() {
           <section className="content-stack">
             {activeProject ? (
               <>
-                <section className="section-heading outside-heading">
-                  <p className="eyebrow">Guest CRM</p>
-                  <h2>Track who fits {activeProject.name} and why they should say yes.</h2>
+                <section className="panel workspace-toolbar-panel">
+                  <div className="section-heading">
+                    <p className="eyebrow">Guest CRM</p>
+                    <h2>Track who fits {activeProject.name} and why they should say yes.</h2>
+                    <p>Add guest leads, shape the outreach angle, mark contact status, and copy a pitch when you are ready to reach out.</p>
+                  </div>
+                  <div className="workspace-toolbar-actions">
+                    <button className="primary-button" onClick={addGuest} type="button">
+                      Add Guest
+                    </button>
+                    <button className="secondary-button" onClick={handleRegenerateGuests} type="button">
+                      Regenerate Guests
+                    </button>
+                  </div>
                 </section>
-                <div className="guest-grid">
-                  {activeProject.guests.map((guest) => (
-                    <GuestCard key={guest.id} guest={guest} />
-                  ))}
-                </div>
+
+                {activeProject.guests.length > 0 ? (
+                  <div className="guest-grid editable-grid">
+                    {activeProject.guests.map((guest) => (
+                      <GuestCard
+                        editable
+                        guest={guest}
+                        key={guest.id}
+                        onChange={(nextGuest) => updateGuest(guest.id, nextGuest)}
+                        onCopyPitch={() => handleCopyStarterKit('Guest pitch', formatGuestPitch(activeProject, guest))}
+                        onDelete={() => deleteGuest(guest.id)}
+                        onMarkContacted={() => markGuestContacted(guest)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <section className="panel empty-section-panel">
+                    <h2>No guest leads yet.</h2>
+                    <p>Add a guest lead or regenerate the guest wishlist from the project setup.</p>
+                    <button className="primary-button" onClick={addGuest} type="button">
+                      Add Guest
+                    </button>
+                  </section>
+                )}
+
                 <section className="panel">
                   <p className="eyebrow">Outreach Draft</p>
                   <h2>Starter guest pitch</h2>
@@ -780,11 +990,7 @@ function App() {
                   <div className="checklist">
                     {activeProject.launchItems.map((item: ChecklistItem) => (
                       <label key={item.id} className={item.done ? 'checked' : ''}>
-                        <input
-                          checked={item.done}
-                          onChange={() => toggleLaunchItem(item.id)}
-                          type="checkbox"
-                        />
+                        <input checked={item.done} onChange={() => toggleLaunchItem(item.id)} type="checkbox" />
                         <span>{item.label}</span>
                       </label>
                     ))}
