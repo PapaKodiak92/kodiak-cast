@@ -1,5 +1,5 @@
 import { generateBlueprint, generateGuestLeads, generateStarterKit } from './blueprint';
-import type { EpisodeIdea, GuestLead, PodcastInputs, PodcastProject, WorkspacePayload } from '../types';
+import type { ChecklistItem, EpisodeIdea, GuestLead, PodcastInputs, PodcastProject, WorkspacePayload } from '../types';
 
 const WORKSPACE_STORAGE_KEY = 'kodiak-cast:workspace:v1';
 const EXAMPLE_PROJECT_ID = 'project-example-kodiak-cast';
@@ -48,6 +48,23 @@ function cloneGuests(guests: GuestLead[], namespace: string) {
   }));
 }
 
+function normalizeLaunchItem(item: ChecklistItem, index = 0): ChecklistItem {
+  const status = item.status ?? (item.done ? 'done' : 'todo');
+
+  return {
+    ...item,
+    done: status === 'done',
+    status,
+    priority: item.priority ?? (index < 3 ? 'high' : 'medium'),
+    dueDate: item.dueDate ?? '',
+    notes: item.notes ?? ''
+  };
+}
+
+function normalizeLaunchItems(items: ChecklistItem[]) {
+  return items.map(normalizeLaunchItem);
+}
+
 function buildProjectEpisodes(projectId: string, blueprint: PodcastProject['blueprint']) {
   return cloneEpisodes(blueprint.firstEpisodes, projectId);
 }
@@ -58,13 +75,16 @@ function buildProjectGuests(projectId: string, inputs: PodcastInputs) {
 
 function normalizeProject(project: PodcastProject): PodcastProject {
   const blueprint = project.blueprint ?? generateBlueprint(project.inputs);
-  const launchItems = project.launchItems?.length ? project.launchItems : blueprint.launchChecklist;
+  const launchItems = project.launchItems?.length ? normalizeLaunchItems(project.launchItems) : normalizeLaunchItems(blueprint.launchChecklist);
   const episodes = project.episodes?.length ? project.episodes : buildProjectEpisodes(project.id, blueprint);
   const guests = project.guests?.length ? project.guests : buildProjectGuests(project.id, project.inputs);
 
   return {
     ...project,
-    blueprint,
+    blueprint: {
+      ...blueprint,
+      launchChecklist: normalizeLaunchItems(blueprint.launchChecklist)
+    },
     launchItems,
     episodes,
     guests,
@@ -82,7 +102,7 @@ function createExampleWorkspace(): SavedWorkspace {
     updatedAt: now,
     inputs: exampleInputs,
     blueprint,
-    launchItems: blueprint.launchChecklist,
+    launchItems: normalizeLaunchItems(blueprint.launchChecklist),
     episodes: buildProjectEpisodes(EXAMPLE_PROJECT_ID, blueprint),
     guests: buildProjectGuests(EXAMPLE_PROJECT_ID, exampleInputs),
     starterKit: generateStarterKit(exampleInputs, blueprint)
@@ -133,7 +153,7 @@ function migrateLegacyWorkspace(value: unknown): SavedWorkspace | null {
     updatedAt: now,
     inputs: legacy.inputs,
     blueprint: legacy.blueprint,
-    launchItems: legacy.launchItems,
+    launchItems: normalizeLaunchItems(legacy.launchItems),
     episodes: buildProjectEpisodes('project-legacy', legacy.blueprint),
     guests: buildProjectGuests('project-legacy', legacy.inputs),
     starterKit: generateStarterKit(legacy.inputs, legacy.blueprint)
