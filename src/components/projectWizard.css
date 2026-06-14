@@ -4,7 +4,7 @@
   z-index: 60;
   display: grid;
   place-items: center;
-  padding: 28px;
+  padding: 24px;
   background:
     radial-gradient(circle at top left, rgba(245, 158, 11, 0.14), transparent 34%),
     radial-gradient(circle at bottom right, rgba(192, 132, 252, 0.16), transparent 32%),
@@ -15,15 +15,15 @@
 .project-wizard {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  width: min(920px, 100%);
-  max-height: calc(100vh - 56px);
-  overflow-y: auto;
+  gap: 14px;
+  width: min(980px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 28px;
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.94));
   box-shadow: 0 30px 110px rgba(0, 0, 0, 0.58);
-  padding: 26px;
+  padding: 22px;
 }
 
 .wizard-topline {
@@ -53,20 +53,20 @@
 }
 
 .project-wizard h2 {
-  max-width: 680px;
-  font-size: clamp(1.7rem, 4vw, 3rem);
+  max-width: 700px;
+  font-size: clamp(1.55rem, 3.4vw, 2.7rem);
   line-height: 1;
 }
 
 .project-wizard h3 {
   color: #fff7ed;
-  font-size: 1.3rem;
+  font-size: 1.22rem;
 }
 
 .project-wizard p {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: var(--muted);
-  line-height: 1.65;
+  line-height: 1.55;
 }
 
 .wizard-progress {
@@ -76,7 +76,7 @@
 }
 
 .wizard-progress span {
-  padding: 11px 12px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: rgba(2, 6, 23, 0.48);
@@ -94,9 +94,16 @@
 
 .wizard-body {
   display: grid;
-  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+  grid-template-columns: minmax(230px, 0.68fr) minmax(0, 1.32fr);
   gap: 18px;
   align-items: start;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.show-type-step {
+  grid-template-columns: minmax(270px, 0.72fr) minmax(0, 1.28fr);
 }
 
 .wizard-main-column {
@@ -119,11 +126,44 @@
   padding: 18px;
 }
 
+.show-type-controls {
+  display: grid;
+  gap: 14px;
+  align-self: start;
+}
+
+.selected-type-pill {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(192, 132, 252, 0.09));
+}
+
+.selected-type-pill span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.selected-type-pill strong {
+  color: #fff7ed;
+  font-size: 1.02rem;
+}
+
 .wizard-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   padding: 18px;
+}
+
+.wizard-inline-fields {
+  display: grid;
+  gap: 12px;
 }
 
 .wizard-wide-label {
@@ -148,8 +188,12 @@
 }
 
 .project-wizard textarea {
-  min-height: 90px;
+  min-height: 82px;
   resize: vertical;
+}
+
+.wizard-inline-fields textarea {
+  min-height: 108px;
 }
 
 .compact-wizard-form textarea {
@@ -160,11 +204,13 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  align-self: start;
 }
 
 .show-type-card {
   display: grid;
   gap: 8px;
+  min-height: 118px;
   padding: 16px;
   color: var(--text);
   text-align: left;
@@ -195,13 +241,14 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 2px;
+  margin-top: 0;
   padding-top: 14px;
   border-top: 1px solid rgba(148, 163, 184, 0.14);
 }
 
 @media (max-width: 860px) {
   .wizard-body,
+  .show-type-step,
   .wizard-form-grid,
   .show-type-grid,
   .wizard-progress {
