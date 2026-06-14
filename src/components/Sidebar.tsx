@@ -8,7 +8,8 @@ const sections = [
   { id: 'blueprint', label: 'Blueprint' },
   { id: 'episodes', label: 'Episodes' },
   { id: 'guests', label: 'Guests' },
-  { id: 'launch', label: 'Launch' }
+  { id: 'launch', label: 'Launch' },
+  { id: 'ai', label: 'AI Settings' }
 ];
 
 export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
