@@ -10,8 +10,8 @@ import { EpisodeCard } from './components/EpisodeCard';
 import { GuestCard } from './components/GuestCard';
 import { MetricCard } from './components/MetricCard';
 import { Sidebar } from './components/Sidebar';
-import { starterEpisodes, starterGuests } from './data/starterData';
-import { generateBlueprint } from './lib/blueprint';
+import { StarterKitPanel } from './components/StarterKitPanel';
+import { generateBlueprint, generateGuestLeads, generateStarterKit } from './lib/blueprint';
 import { clearWorkspace, loadWorkspace, saveWorkspace } from './lib/workspaceStorage';
 import type {
   ChecklistItem,
@@ -68,7 +68,11 @@ function cloneGuests(guests: GuestLead[], namespace: string) {
 }
 
 function buildEpisodesForProject(projectId: string, blueprint: PodcastBlueprint) {
-  return [...cloneEpisodes(blueprint.firstEpisodes, projectId), ...cloneEpisodes(starterEpisodes, `${projectId}-starter`)];
+  return cloneEpisodes(blueprint.firstEpisodes, projectId);
+}
+
+function buildGuestsForProject(projectId: string, inputs: PodcastInputs) {
+  return cloneGuests(generateGuestLeads(inputs), projectId);
 }
 
 function createPodcastProject(inputs: PodcastInputs, fallbackName = 'Untitled Podcast'): PodcastProject {
@@ -86,7 +90,8 @@ function createPodcastProject(inputs: PodcastInputs, fallbackName = 'Untitled Po
     blueprint,
     launchItems: blueprint.launchChecklist,
     episodes: buildEpisodesForProject(id, blueprint),
-    guests: cloneGuests(starterGuests, id)
+    guests: buildGuestsForProject(id, inputs),
+    starterKit: generateStarterKit(inputs, blueprint)
   };
 }
 
@@ -189,14 +194,18 @@ function App() {
     }
 
     const nextBlueprint = generateBlueprint(activeProject.inputs);
+    const nextStarterKit = generateStarterKit(activeProject.inputs, nextBlueprint);
 
     updateActiveProject((project) => ({
       ...project,
       blueprint: nextBlueprint,
       launchItems: nextBlueprint.launchChecklist,
-      episodes: buildEpisodesForProject(project.id, nextBlueprint)
+      episodes: buildEpisodesForProject(project.id, nextBlueprint),
+      guests: buildGuestsForProject(project.id, activeProject.inputs),
+      starterKit: nextStarterKit
     }));
 
+    setSaveStatus('Starter kit generated');
     setActiveSection('blueprint');
   };
 
@@ -380,7 +389,7 @@ function App() {
                 <h2>Every show gets its own workspace.</h2>
                 <p>
                   Create multiple podcast projects, switch between them, and keep each blueprint, launch checklist,
-                  episodes, and guest list separate.
+                  episodes, guest list, and starter kit separate.
                 </p>
               </div>
 
@@ -390,8 +399,8 @@ function App() {
                     <span>Start here</span>
                     <h3>Create your first podcast project.</h3>
                     <p>
-                      Kodiak Cast should not force a demo show into your workspace. Start with your own show, then generate
-                      the blueprint, starter episodes, guest angles, and launch checklist around that idea.
+                      Start with your own show, then generate the blueprint, starter episodes, guest angles,
+                      trailer script, social launch posts, and launch checklist around that idea.
                     </p>
                   </div>
                   <button className="primary-button" onClick={handleCreateProject} type="button">
@@ -442,18 +451,18 @@ function App() {
             <section className="panel two-column-panel">
               <div>
                 <p className="eyebrow">Next Action</p>
-                <h2>{activeProject ? 'Generate the starter kit for this show.' : 'Create your first real podcast project.'}</h2>
+                <h2>{activeProject ? 'Generate the full starter kit for this show.' : 'Create your first real podcast project.'}</h2>
                 <p>
                   {activeProject
-                    ? 'Fill out the setup wizard, generate the blueprint, then shape the promise, format, pillars, first episodes, guest list, and launch checklist until it sounds like the real show.'
+                    ? 'Fill out the setup wizard, generate the starter kit, then shape the promise, format, pillars, first episodes, guest list, trailer script, launch posts, and checklist until it sounds like the real show.'
                     : 'Start with your own podcast idea instead of a demo project. The workspace will save each show separately as you build it.'}
                 </p>
               </div>
               <div className="action-list">
                 <span>{activeProject ? 'Choose the active podcast project' : 'Create the first podcast project'}</span>
                 <span>Answer the setup wizard</span>
-                <span>Generate the show blueprint</span>
-                <span>Refine the listener promise</span>
+                <span>Generate the full starter kit</span>
+                <span>Refine and save the launch assets</span>
               </div>
             </section>
 
@@ -465,7 +474,7 @@ function App() {
               {activeProject ? (
                 <EpisodeCard episode={activeProject.episodes[0]} />
               ) : (
-                <p>Create a podcast project and generate its blueprint to get the first suggested episode focus.</p>
+                <p>Create a podcast project and generate its starter kit to get the first suggested episode focus.</p>
               )}
             </section>
           </section>
@@ -484,12 +493,14 @@ function App() {
                   onRemoveListItem={removeBlueprintListItem}
                   onTextChange={updateBlueprintText}
                 />
+
+                <StarterKitPanel projectName={activeProject.name} starterKit={activeProject.starterKit} />
               </>
             ) : (
               <section className="panel empty-section-panel">
                 <p className="eyebrow">Blueprint</p>
                 <h2>No project selected.</h2>
-                <p>Create your first podcast project before generating a blueprint.</p>
+                <p>Create your first podcast project before generating a starter kit.</p>
                 <button className="primary-button" onClick={handleCreateProject} type="button">
                   Create First Project
                 </button>
@@ -513,7 +524,7 @@ function App() {
             ) : (
               <section className="panel empty-section-panel">
                 <h2>No episode pipeline yet.</h2>
-                <p>Create a podcast project and generate its blueprint to seed starter episode ideas.</p>
+                <p>Create a podcast project and generate its starter kit to seed episode ideas.</p>
                 <button className="primary-button" onClick={handleCreateProject} type="button">
                   Create First Project
                 </button>
@@ -561,31 +572,35 @@ function App() {
         {activeSection === 'launch' && (
           <section className="content-stack">
             {activeProject ? (
-              <section className="panel">
-                <div className="section-heading">
-                  <p className="eyebrow">Launch Checklist</p>
-                  <h2>Keep {activeProject.name} moving.</h2>
-                  <p>Click items as they are completed. Each project saves its own progress locally in this browser.</p>
-                </div>
+              <>
+                <section className="panel">
+                  <div className="section-heading">
+                    <p className="eyebrow">Launch Checklist</p>
+                    <h2>Keep {activeProject.name} moving.</h2>
+                    <p>Click items as they are completed. Each project saves its own progress locally in this browser.</p>
+                  </div>
 
-                <div className="checklist">
-                  {activeProject.launchItems.map((item: ChecklistItem) => (
-                    <label key={item.id} className={item.done ? 'checked' : ''}>
-                      <input
-                        checked={item.done}
-                        onChange={() => toggleLaunchItem(item.id)}
-                        type="checkbox"
-                      />
-                      <span>{item.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </section>
+                  <div className="checklist">
+                    {activeProject.launchItems.map((item: ChecklistItem) => (
+                      <label key={item.id} className={item.done ? 'checked' : ''}>
+                        <input
+                          checked={item.done}
+                          onChange={() => toggleLaunchItem(item.id)}
+                          type="checkbox"
+                        />
+                        <span>{item.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
+
+                <StarterKitPanel projectName={activeProject.name} starterKit={activeProject.starterKit} />
+              </>
             ) : (
               <section className="panel empty-section-panel">
                 <p className="eyebrow">Launch Checklist</p>
                 <h2>No launch checklist yet.</h2>
-                <p>Create a podcast project and generate its blueprint to build a launch checklist.</p>
+                <p>Create a podcast project and generate its starter kit to build a launch checklist.</p>
                 <button className="primary-button" onClick={handleCreateProject} type="button">
                   Create First Project
                 </button>
