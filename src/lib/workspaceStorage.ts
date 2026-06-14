@@ -1,5 +1,4 @@
-import { starterEpisodes, starterGuests } from '../data/starterData';
-import { generateBlueprint } from './blueprint';
+import { generateBlueprint, generateGuestLeads, generateStarterKit } from './blueprint';
 import type { EpisodeIdea, GuestLead, PodcastInputs, PodcastProject, WorkspacePayload } from '../types';
 
 const WORKSPACE_STORAGE_KEY = 'kodiak-cast:workspace:v1';
@@ -23,8 +22,13 @@ type LegacySavedWorkspace = {
   launchItems?: PodcastProject['launchItems'];
 };
 
-export interface SavedWorkspace extends WorkspacePayload {
+type SavedWorkspaceV2 = WorkspacePayload & {
   version: 2;
+  savedAt: string;
+};
+
+export interface SavedWorkspace extends WorkspacePayload {
+  version: 3;
   savedAt: string;
 }
 
@@ -44,6 +48,30 @@ function cloneGuests(guests: GuestLead[], namespace: string) {
   }));
 }
 
+function buildProjectEpisodes(projectId: string, blueprint: PodcastProject['blueprint']) {
+  return cloneEpisodes(blueprint.firstEpisodes, projectId);
+}
+
+function buildProjectGuests(projectId: string, inputs: PodcastInputs) {
+  return cloneGuests(generateGuestLeads(inputs), projectId);
+}
+
+function normalizeProject(project: PodcastProject): PodcastProject {
+  const blueprint = project.blueprint ?? generateBlueprint(project.inputs);
+  const launchItems = project.launchItems?.length ? project.launchItems : blueprint.launchChecklist;
+  const episodes = project.episodes?.length ? project.episodes : buildProjectEpisodes(project.id, blueprint);
+  const guests = project.guests?.length ? project.guests : buildProjectGuests(project.id, project.inputs);
+
+  return {
+    ...project,
+    blueprint,
+    launchItems,
+    episodes,
+    guests,
+    starterKit: project.starterKit ?? generateStarterKit(project.inputs, blueprint)
+  };
+}
+
 function createExampleWorkspace(): SavedWorkspace {
   const now = new Date().toISOString();
   const blueprint = generateBlueprint(exampleInputs);
@@ -55,28 +83,35 @@ function createExampleWorkspace(): SavedWorkspace {
     inputs: exampleInputs,
     blueprint,
     launchItems: blueprint.launchChecklist,
-    episodes: [
-      ...cloneEpisodes(blueprint.firstEpisodes, EXAMPLE_PROJECT_ID),
-      ...cloneEpisodes(starterEpisodes, `${EXAMPLE_PROJECT_ID}-starter`)
-    ],
-    guests: cloneGuests(starterGuests, EXAMPLE_PROJECT_ID)
+    episodes: buildProjectEpisodes(EXAMPLE_PROJECT_ID, blueprint),
+    guests: buildProjectGuests(EXAMPLE_PROJECT_ID, exampleInputs),
+    starterKit: generateStarterKit(exampleInputs, blueprint)
   };
 
   return {
-    version: 2,
+    version: 3,
     savedAt: now,
     projects: [project],
     activeProjectId: project.id
   };
 }
 
-function isWorkspacePayload(value: unknown): value is SavedWorkspace {
+function isWorkspacePayload(value: unknown): value is SavedWorkspace | SavedWorkspaceV2 {
   if (!value || typeof value !== 'object') {
     return false;
   }
 
-  const workspace = value as SavedWorkspace;
-  return workspace.version === 2 && Array.isArray(workspace.projects) && typeof workspace.activeProjectId === 'string';
+  const workspace = value as SavedWorkspace | SavedWorkspaceV2;
+  return (workspace.version === 2 || workspace.version === 3) && Array.isArray(workspace.projects) && typeof workspace.activeProjectId === 'string';
+}
+
+function normalizeWorkspace(workspace: SavedWorkspace | SavedWorkspaceV2): SavedWorkspace {
+  return {
+    version: 3,
+    savedAt: workspace.savedAt,
+    projects: workspace.projects.map(normalizeProject),
+    activeProjectId: workspace.activeProjectId
+  };
 }
 
 function migrateLegacyWorkspace(value: unknown): SavedWorkspace | null {
@@ -99,12 +134,13 @@ function migrateLegacyWorkspace(value: unknown): SavedWorkspace | null {
     inputs: legacy.inputs,
     blueprint: legacy.blueprint,
     launchItems: legacy.launchItems,
-    episodes: legacy.blueprint.firstEpisodes,
-    guests: []
+    episodes: buildProjectEpisodes('project-legacy', legacy.blueprint),
+    guests: buildProjectGuests('project-legacy', legacy.inputs),
+    starterKit: generateStarterKit(legacy.inputs, legacy.blueprint)
   };
 
   return {
-    version: 2,
+    version: 3,
     savedAt: now,
     projects: [project],
     activeProjectId: project.id
@@ -126,7 +162,7 @@ export function loadWorkspace(): SavedWorkspace | null {
     const parsedWorkspace = JSON.parse(rawWorkspace) as unknown;
 
     if (isWorkspacePayload(parsedWorkspace)) {
-      return parsedWorkspace;
+      return normalizeWorkspace(parsedWorkspace);
     }
 
     return migrateLegacyWorkspace(parsedWorkspace);
@@ -142,7 +178,7 @@ export function saveWorkspace(payload: WorkspacePayload): SavedWorkspace | null 
   }
 
   const workspace: SavedWorkspace = {
-    version: 2,
+    version: 3,
     savedAt: new Date().toISOString(),
     ...payload
   };
