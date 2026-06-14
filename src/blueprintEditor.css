@@ -1,0 +1,111 @@
+.editor-panel {
+  overflow: hidden;
+}
+
+.editor-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.editor-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.editor-grid {
+  align-items: stretch;
+}
+
+.editable-card {
+  padding: 18px;
+}
+
+.editable-card textarea {
+  min-height: 116px;
+}
+
+.editor-list-grid {
+  align-items: start;
+}
+
+.editable-list-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.editable-list-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.editable-list-heading h3,
+.editable-list-heading p {
+  margin: 0;
+}
+
+.editable-list-heading p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.editable-list {
+  display: grid;
+  gap: 12px;
+}
+
+.editable-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.editable-list-row textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #dbeafe;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.secondary-button:hover:not(:disabled) {
+  border-color: rgba(192, 132, 252, 0.38);
+  background: rgba(192, 132, 252, 0.12);
+  color: var(--text);
+}
+
+.secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.danger-button:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.42);
+  background: rgba(248, 113, 113, 0.1);
+}
+
+@media (max-width: 720px) {
+  .editable-list-heading,
+  .editable-list-row {
+    grid-template-columns: 1fr;
+  }
+
+  .editable-list-heading {
+    display: grid;
+  }
+}
