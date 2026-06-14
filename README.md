@@ -8,28 +8,37 @@ The first version is intentionally focused on the part most new podcasters actua
 
 Plan the show. Build the episode pipeline. Find guests. Launch with structure. Keep publishing.
 
-## MVP features in this starter repo
+## MVP features in this repo
 
-- Podcast dashboard
-- Guided show blueprint form
-- Local blueprint generator
-- Episode idea pipeline
-- Guest CRM starter view
-- Launch checklist
+- Multi-project podcast workspace
+- Guided project creation wizard
+- Full podcast starter kit generation
+- Editable show blueprint
+- Editable episode planner
+- Guest CRM
+- Launch Command Center
+- Export/copy tools
+- Local workspace persistence
+- Kodiak Cloud AI gateway for development
 - Clean Vite + React + TypeScript foundation
 
-## Future AI features
+## Kodiak Cloud AI development setup
 
-Kodiak Cast should eventually include AI assistance for:
+Customers should not bring their own AI keys. In development, Kodiak Cast runs a small local AI gateway that uses **our** server-side key from `.env` or `.env.local`.
 
-- Podcast name ideas
-- Show descriptions and listener promises
-- Episode topics based on the podcast type
-- Episode outlines and talking points
-- Guest suggestions and episode angles
-- Guest outreach drafts
-- Social clip ideas
-- Weekly “what should I record next?” recommendations
+Create one of these files locally:
+
+```powershell
+notepad .env
+```
+
+Add:
+
+```env
+OPENAI_API_KEY=your_real_key_here
+```
+
+Do not commit `.env` or screenshots of your key. The repo already ignores `.env`, `.env.local`, and `.env.*.local`.
 
 ## Local setup
 
@@ -38,7 +47,20 @@ npm install
 npm run dev
 ```
 
-Then open the local Vite URL shown in your terminal.
+`npm run dev` starts both:
+
+- Kodiak AI gateway on `http://127.0.0.1:8787`
+- Vite app on `http://localhost:5173`
+
+The Vite dev server proxies `/api/*` requests to the local gateway, so the browser never sees the OpenAI key.
+
+## Optional commands
+
+```powershell
+npm run api       # starts only the local AI gateway
+npm run dev:vite  # starts only Vite
+npm run build     # typecheck and production build
+```
 
 ## Suggested GitHub setup
 
@@ -59,14 +81,6 @@ Or with GitHub CLI:
 gh repo create PapaKodiak92/kodiak-cast --private --source=. --remote=origin --push
 ```
 
-## Recommended first real development milestone
+## Production note
 
-1. Persist podcasts, episodes, guests, and checklist items.
-2. Add auth.
-3. Add an AI blueprint API route or backend service.
-4. Add one real podcast project for the founder’s own show.
-5. Use the app weekly and improve based on what breaks.
-
-## Important AI key note
-
-Do not put private OpenAI/API keys in Vite client-side env vars. Add AI calls through a backend API, serverless function, or Supabase Edge Function later.
+Before launch, move this local gateway into a hosted backend or serverless function, add authentication, and meter AI usage by plan. The product should feel like **Kodiak Cast includes AI**, not like users need to bring an API key.
