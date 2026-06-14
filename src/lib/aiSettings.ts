@@ -10,12 +10,14 @@ export interface AiSettings {
 
 const AI_SETTINGS_KEY = 'kodiak-cast:ai-settings:v2';
 const LEGACY_AI_SETTINGS_KEY = 'kodiak-cast:ai-settings:v1';
+const DEFAULT_AI_MODEL = 'gpt-5.4-mini';
+const KNOWN_BAD_MODEL_IDS = new Set(['gpt-5.1-mini']);
 
 export const defaultAiSettings: AiSettings = {
   defaultEpisodeCount: 10,
   enabled: true,
   launchPlanDepth: 'standard',
-  model: 'gpt-5.1-mini',
+  model: DEFAULT_AI_MODEL,
   style: 'practical'
 };
 
@@ -29,6 +31,16 @@ function normalizeEpisodeCount(value: unknown) {
   return Math.min(25, Math.max(3, Math.round(parsed)));
 }
 
+function normalizeModel(value: unknown) {
+  const model = typeof value === 'string' ? value.trim() : '';
+
+  if (!model || KNOWN_BAD_MODEL_IDS.has(model)) {
+    return defaultAiSettings.model;
+  }
+
+  return model;
+}
+
 function normalizeSettings(value: unknown): AiSettings {
   const parsedSettings = value && typeof value === 'object' ? (value as Partial<AiSettings>) : {};
 
@@ -37,7 +49,7 @@ function normalizeSettings(value: unknown): AiSettings {
     defaultEpisodeCount: normalizeEpisodeCount(parsedSettings.defaultEpisodeCount),
     enabled: parsedSettings.enabled ?? defaultAiSettings.enabled,
     launchPlanDepth: parsedSettings.launchPlanDepth ?? defaultAiSettings.launchPlanDepth,
-    model: parsedSettings.model?.trim() || defaultAiSettings.model,
+    model: normalizeModel(parsedSettings.model),
     style: parsedSettings.style ?? defaultAiSettings.style
   };
 }
@@ -54,7 +66,14 @@ export function loadAiSettings(): AiSettings {
       return defaultAiSettings;
     }
 
-    return normalizeSettings(JSON.parse(rawSettings));
+    const normalizedSettings = normalizeSettings(JSON.parse(rawSettings));
+
+    if (rawSettings.includes('gpt-5.1-mini')) {
+      window.localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(normalizedSettings));
+      window.localStorage.removeItem(LEGACY_AI_SETTINGS_KEY);
+    }
+
+    return normalizedSettings;
   } catch {
     return defaultAiSettings;
   }
