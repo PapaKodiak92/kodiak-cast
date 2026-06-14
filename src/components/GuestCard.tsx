@@ -10,14 +10,19 @@ interface GuestCardProps {
 }
 
 const guestStatuses: GuestStatus[] = ['wishlist', 'contacted', 'scheduled', 'recorded', 'passed'];
+type GuestTextField = 'name' | 'fit' | 'episodeAngle' | 'notes';
 
 function formatStatus(status: GuestStatus) {
   return status.replace(/-/g, ' ');
 }
 
 export function GuestCard({ editable = false, guest, onChange, onCopyPitch, onDelete, onMarkContacted }: GuestCardProps) {
-  const updateField = (field: keyof GuestLead, value: string | GuestStatus) => {
+  const updateTextField = (field: GuestTextField, value: string) => {
     onChange?.({ ...guest, [field]: value });
+  };
+
+  const updateStatus = (status: GuestStatus) => {
+    onChange?.({ ...guest, status });
   };
 
   if (!editable) {
@@ -41,7 +46,7 @@ export function GuestCard({ editable = false, guest, onChange, onCopyPitch, onDe
       <div className="work-card-topline">
         <label className="compact-label">
           Status
-          <select value={guest.status} onChange={(event) => updateField('status', event.target.value as GuestStatus)}>
+          <select value={guest.status} onChange={(event) => updateStatus(event.target.value as GuestStatus)}>
             {guestStatuses.map((status) => (
               <option key={status} value={status}>
                 {formatStatus(status)}
@@ -56,22 +61,22 @@ export function GuestCard({ editable = false, guest, onChange, onCopyPitch, onDe
 
       <label>
         Guest name / type
-        <input value={guest.name} onChange={(event) => updateField('name', event.target.value)} />
+        <input value={guest.name} onChange={(event) => updateTextField('name', event.target.value)} />
       </label>
 
       <label>
         Why they fit
-        <textarea rows={3} value={guest.fit} onChange={(event) => updateField('fit', event.target.value)} />
+        <textarea rows={3} value={guest.fit} onChange={(event) => updateTextField('fit', event.target.value)} />
       </label>
 
       <label>
         Outreach angle
-        <textarea rows={3} value={guest.episodeAngle} onChange={(event) => updateField('episodeAngle', event.target.value)} />
+        <textarea rows={3} value={guest.episodeAngle} onChange={(event) => updateTextField('episodeAngle', event.target.value)} />
       </label>
 
       <label>
         Notes
-        <textarea rows={4} value={guest.notes ?? ''} onChange={(event) => updateField('notes', event.target.value)} />
+        <textarea rows={4} value={guest.notes ?? ''} onChange={(event) => updateTextField('notes', event.target.value)} />
       </label>
 
       <div className="angle-box pitch-preview-box">
