@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BlueprintForm } from './components/BlueprintForm';
 import {
   EditableBlueprint,
@@ -11,9 +11,11 @@ import { MetricCard } from './components/MetricCard';
 import { Sidebar } from './components/Sidebar';
 import { starterEpisodes, starterGuests } from './data/starterData';
 import { generateBlueprint } from './lib/blueprint';
-import type { PodcastInputs } from './types';
+import { clearWorkspace, loadWorkspace, saveWorkspace } from './lib/workspaceStorage';
+import type { ChecklistItem, PodcastBlueprint, PodcastInputs } from './types';
 import './styles.css';
 import './blueprintEditor.css';
+import './workspace.css';
 
 const defaultInputs: PodcastInputs = {
   showName: 'Kodiak Cast',
@@ -25,11 +27,40 @@ const defaultInputs: PodcastInputs = {
   goal: 'prove the system by using it to launch and maintain the show ourselves'
 };
 
+function formatSavedAt(savedAt: string) {
+  if (!savedAt) {
+    return 'Not saved yet';
+  }
+
+  const savedDate = new Date(savedAt);
+
+  if (Number.isNaN(savedDate.getTime())) {
+    return 'Not saved yet';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  }).format(savedDate);
+}
+
 function App() {
+  const restoredWorkspace = useMemo(() => loadWorkspace(), []);
+  const initialInputs = restoredWorkspace?.inputs ?? defaultInputs;
+  const initialBlueprint = restoredWorkspace?.blueprint ?? generateBlueprint(initialInputs);
+
   const [activeSection, setActiveSection] = useState('dashboard');
-  const [inputs, setInputs] = useState(defaultInputs);
-  const [blueprint, setBlueprint] = useState(() => generateBlueprint(defaultInputs));
-  const [launchItems, setLaunchItems] = useState(blueprint.launchChecklist);
+  const [inputs, setInputs] = useState<PodcastInputs>(initialInputs);
+  const [blueprint, setBlueprint] = useState<PodcastBlueprint>(initialBlueprint);
+  const [launchItems, setLaunchItems] = useState<ChecklistItem[]>(
+    restoredWorkspace?.launchItems ?? initialBlueprint.launchChecklist
+  );
+  const [lastSavedAt, setLastSavedAt] = useState(restoredWorkspace?.savedAt ?? '');
+  const [saveStatus, setSaveStatus] = useState(
+    restoredWorkspace ? 'Restored saved workspace' : 'Ready to save locally'
+  );
 
   const allEpisodes = useMemo(
     () => [...blueprint.firstEpisodes, ...starterEpisodes],
@@ -37,12 +68,37 @@ function App() {
   );
 
   const completedLaunchItems = launchItems.filter((item) => item.done).length;
+  const formattedSaveTime = useMemo(() => formatSavedAt(lastSavedAt), [lastSavedAt]);
+
+  useEffect(() => {
+    const savedWorkspace = saveWorkspace({ inputs, blueprint, launchItems });
+
+    if (savedWorkspace) {
+      setLastSavedAt(savedWorkspace.savedAt);
+      setSaveStatus('Saved locally');
+      return;
+    }
+
+    setSaveStatus('Unable to save locally');
+  }, [inputs, blueprint, launchItems]);
 
   const handleGenerate = () => {
     const nextBlueprint = generateBlueprint(inputs);
     setBlueprint(nextBlueprint);
     setLaunchItems(nextBlueprint.launchChecklist);
     setActiveSection('blueprint');
+  };
+
+  const handleResetWorkspace = () => {
+    const nextBlueprint = generateBlueprint(defaultInputs);
+
+    clearWorkspace();
+    setInputs(defaultInputs);
+    setBlueprint(nextBlueprint);
+    setLaunchItems(nextBlueprint.launchChecklist);
+    setLastSavedAt('');
+    setSaveStatus('Workspace reset');
+    setActiveSection('dashboard');
   };
 
   const updateBlueprintText = (field: BlueprintTextField, value: string) => {
@@ -97,9 +153,19 @@ function App() {
               we have proof it can help other creators too.
             </p>
           </div>
-          <button className="primary-button" onClick={() => setActiveSection('blueprint')} type="button">
-            Start Blueprint
-          </button>
+          <div className="hero-actions">
+            <button className="primary-button" onClick={() => setActiveSection('blueprint')} type="button">
+              Start Blueprint
+            </button>
+            <button className="secondary-button" onClick={handleResetWorkspace} type="button">
+              Reset Workspace
+            </button>
+            <div className="save-status" aria-live="polite">
+              <span className="save-dot" aria-hidden="true" />
+              <span>{saveStatus}</span>
+              <small>{formattedSaveTime}</small>
+            </div>
+          </div>
         </header>
 
         {activeSection === 'dashboard' && (
@@ -195,7 +261,7 @@ function App() {
               <div className="section-heading">
                 <p className="eyebrow">Launch Checklist</p>
                 <h2>Keep the show moving.</h2>
-                <p>Click items as they are completed. Later this becomes persistent per user and per podcast.</p>
+                <p>Click items as they are completed. Your progress now saves locally in this browser.</p>
               </div>
 
               <div className="checklist">
