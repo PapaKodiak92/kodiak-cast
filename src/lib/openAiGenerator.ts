@@ -323,16 +323,9 @@ Rules:
 }
 
 export async function generateAiStarterKit(inputs: PodcastInputs, settings: AiSettings): Promise<AiStarterKitResult> {
-  const apiKey = settings.apiKey.trim();
-
-  if (!apiKey) {
-    throw new Error('Add an OpenAI API key in AI Settings first.');
-  }
-
-  const response = await fetch('https://api.openai.com/v1/responses', {
+  const response = await fetch('/api/ai/generate', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -348,13 +341,13 @@ export async function generateAiStarterKit(inputs: PodcastInputs, settings: AiSe
 
   if (!response.ok) {
     const error = asRecord(responseBody.error);
-    throw new Error(asString(error.message, 'OpenAI request failed. Check the API key, model, or billing status.'));
+    throw new Error(asString(error.message, 'Kodiak AI gateway failed. Check OPENAI_API_KEY and restart npm run dev.'));
   }
 
   const text = extractJsonText(responseBody);
 
   if (!text) {
-    throw new Error('OpenAI returned an empty response.');
+    throw new Error('Kodiak AI returned an empty response.');
   }
 
   return normalizeAiPayload(parseJsonObject(text), inputs, settings);
