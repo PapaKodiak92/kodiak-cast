@@ -1,6 +1,19 @@
-import type { PodcastProject, WorkspacePayload } from '../types';
+import { starterEpisodes, starterGuests } from '../data/starterData';
+import { generateBlueprint } from './blueprint';
+import type { EpisodeIdea, GuestLead, PodcastInputs, PodcastProject, WorkspacePayload } from '../types';
 
 const WORKSPACE_STORAGE_KEY = 'kodiak-cast:workspace:v1';
+const EXAMPLE_PROJECT_ID = 'project-example-kodiak-cast';
+
+const exampleInputs: PodcastInputs = {
+  showName: 'Kodiak Cast',
+  niche: 'building podcasts, personal discipline, creative momentum, and turning ideas into products',
+  audience: 'people who want to start a real podcast but need structure and accountability',
+  tone: 'honest, practical, focused, and motivational',
+  format: 'solo episodes, guest interviews, and weekly build-in-public updates',
+  cadence: 'weekly',
+  goal: 'prove the system by using it to launch and maintain the show ourselves'
+};
 
 type LegacySavedWorkspace = {
   version: 1;
@@ -13,6 +26,48 @@ type LegacySavedWorkspace = {
 export interface SavedWorkspace extends WorkspacePayload {
   version: 2;
   savedAt: string;
+}
+
+function cloneEpisodes(episodes: EpisodeIdea[], namespace: string) {
+  return episodes.map((episode, index) => ({
+    ...episode,
+    id: `${namespace}-episode-${index + 1}-${episode.id}`,
+    segments: [...episode.segments],
+    clipIdeas: [...episode.clipIdeas]
+  }));
+}
+
+function cloneGuests(guests: GuestLead[], namespace: string) {
+  return guests.map((guest, index) => ({
+    ...guest,
+    id: `${namespace}-guest-${index + 1}-${guest.id}`
+  }));
+}
+
+function createExampleWorkspace(): SavedWorkspace {
+  const now = new Date().toISOString();
+  const blueprint = generateBlueprint(exampleInputs);
+  const project: PodcastProject = {
+    id: EXAMPLE_PROJECT_ID,
+    name: 'Kodiak Cast',
+    createdAt: now,
+    updatedAt: now,
+    inputs: exampleInputs,
+    blueprint,
+    launchItems: blueprint.launchChecklist,
+    episodes: [
+      ...cloneEpisodes(blueprint.firstEpisodes, EXAMPLE_PROJECT_ID),
+      ...cloneEpisodes(starterEpisodes, `${EXAMPLE_PROJECT_ID}-starter`)
+    ],
+    guests: cloneGuests(starterGuests, EXAMPLE_PROJECT_ID)
+  };
+
+  return {
+    version: 2,
+    savedAt: now,
+    projects: [project],
+    activeProjectId: project.id
+  };
 }
 
 function isWorkspacePayload(value: unknown): value is SavedWorkspace {
@@ -65,7 +120,7 @@ export function loadWorkspace(): SavedWorkspace | null {
     const rawWorkspace = window.localStorage.getItem(WORKSPACE_STORAGE_KEY);
 
     if (!rawWorkspace) {
-      return null;
+      return createExampleWorkspace();
     }
 
     const parsedWorkspace = JSON.parse(rawWorkspace) as unknown;
@@ -77,7 +132,7 @@ export function loadWorkspace(): SavedWorkspace | null {
     return migrateLegacyWorkspace(parsedWorkspace);
   } catch {
     window.localStorage.removeItem(WORKSPACE_STORAGE_KEY);
-    return null;
+    return createExampleWorkspace();
   }
 }
 
