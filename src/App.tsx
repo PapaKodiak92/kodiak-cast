@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react';
 import { BlueprintForm } from './components/BlueprintForm';
+import {
+  EditableBlueprint,
+  type BlueprintListField,
+  type BlueprintTextField
+} from './components/EditableBlueprint';
 import { EpisodeCard } from './components/EpisodeCard';
 import { GuestCard } from './components/GuestCard';
 import { MetricCard } from './components/MetricCard';
@@ -8,6 +13,7 @@ import { starterEpisodes, starterGuests } from './data/starterData';
 import { generateBlueprint } from './lib/blueprint';
 import type { PodcastInputs } from './types';
 import './styles.css';
+import './blueprintEditor.css';
 
 const defaultInputs: PodcastInputs = {
   showName: 'Kodiak Cast',
@@ -37,6 +43,38 @@ function App() {
     setBlueprint(nextBlueprint);
     setLaunchItems(nextBlueprint.launchChecklist);
     setActiveSection('blueprint');
+  };
+
+  const updateBlueprintText = (field: BlueprintTextField, value: string) => {
+    setBlueprint((currentBlueprint) => ({
+      ...currentBlueprint,
+      [field]: value
+    }));
+  };
+
+  const updateBlueprintListItem = (field: BlueprintListField, index: number, value: string) => {
+    setBlueprint((currentBlueprint) => ({
+      ...currentBlueprint,
+      [field]: currentBlueprint[field].map((item, itemIndex) => (itemIndex === index ? value : item))
+    }));
+  };
+
+  const addBlueprintListItem = (field: BlueprintListField) => {
+    setBlueprint((currentBlueprint) => ({
+      ...currentBlueprint,
+      [field]: [...currentBlueprint[field], 'New item to shape']
+    }));
+  };
+
+  const removeBlueprintListItem = (field: BlueprintListField, index: number) => {
+    setBlueprint((currentBlueprint) => {
+      const nextItems = currentBlueprint[field].filter((_, itemIndex) => itemIndex !== index);
+
+      return {
+        ...currentBlueprint,
+        [field]: nextItems.length > 0 ? nextItems : ['']
+      };
+    });
   };
 
   const toggleLaunchItem = (id: string) => {
@@ -104,43 +142,13 @@ function App() {
           <section className="content-stack">
             <BlueprintForm inputs={inputs} onChange={setInputs} onGenerate={handleGenerate} />
 
-            <section className="panel">
-              <div className="section-heading">
-                <p className="eyebrow">Generated Blueprint</p>
-                <h2>{blueprint.name}</h2>
-                <p>{blueprint.description}</p>
-              </div>
-
-              <div className="blueprint-grid">
-                <article>
-                  <strong>Tagline</strong>
-                  <p>{blueprint.tagline}</p>
-                </article>
-                <article>
-                  <strong>Listener promise</strong>
-                  <p>{blueprint.listenerPromise}</p>
-                </article>
-              </div>
-
-              <div className="split-list-grid">
-                <div>
-                  <h3>Show format</h3>
-                  <ul>
-                    {blueprint.format.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h3>Content pillars</h3>
-                  <ul>
-                    {blueprint.pillars.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </section>
+            <EditableBlueprint
+              blueprint={blueprint}
+              onAddListItem={addBlueprintListItem}
+              onListItemChange={updateBlueprintListItem}
+              onRemoveListItem={removeBlueprintListItem}
+              onTextChange={updateBlueprintText}
+            />
           </section>
         )}
 
